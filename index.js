@@ -6,6 +6,7 @@ const fs = require('fs-extra');
 // import local modules
 const createFolder = require('./modules/create-folder');
 const getIndexList = require('./modules/get-index-list');
+const getIndex = require('./modules/get-index');
 const exportToCsv = require('./modules/export-to-csv');
 
 // local paths
@@ -95,6 +96,7 @@ async function main() {
         // stage 3: get localities DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download indexes\n');
+        getIndex();
 
 
 

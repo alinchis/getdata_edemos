@@ -12,6 +12,10 @@
   "author": "Alin CHIS",
   "license": "ISC",
   "dependencies": {
+<<<<<<< Updated upstream
+=======
+    "axios": "^0.19.2",
+>>>>>>> Stashed changes
     "cheerio": "^1.0.0-rc.3",
     "fs-extra": "^9.0.1"
   },
