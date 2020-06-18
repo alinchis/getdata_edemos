@@ -1,3 +1,8 @@
+
+const { chromium: chrome } = require('playwright');  // Or 'chromium' or 'webkit'.
+const { sleep, getChildFrameByName } = require('./utils.js');
+const cheerio = require('cheerio');
+
 (async () => {
     const browser = await chrome.launch({ headless: false });
     const page = await browser.newPage();
@@ -18,28 +23,36 @@
     }
 
     await frameIndicatori.waitForSelector('text=Tip indicatori');
-    const selectBoxes = await frameIndicatori.$$('.af_selectOneListbox_content', (el) => el);
-    for (const sb of selectBoxes){
-        const html = await sb.innerHTML();
-        console.log(`==============`, html);
+    const [domenii] = await frameIndicatori.$$('.af_selectOneListbox_content', (el) => el);
+
+    const htmlDomenii = await domenii.innerHTML();
+    const $ = cheerio.load(`<ul>${htmlDomenii}</ul>`);
+
+    const texteDomenii = [];
+    $('li').each(function (el) {
+        texteDomenii.push($(this).text());
+    });
+
+    for (const domeniu of texteDomenii) {
+        await frameIndicatori.click(`text= ${domeniu}`);
+        await frameIndicatori.click('text=Toţi');
+        await sleep(2);
+
+        const lista = (await frameIndicatori.$$('.af_selectOneListbox_content', (el) => el) || []).pop();
+        const htmlLista = await lista.innerHTML()
+        const $lista = cheerio.load(`<ul>${htmlLista}</ul>`);
+        const texteLista = [];
+        $lista('li').each(function () {
+            texteLista.push($lista(this).text());
+        });
+
+        for (const numeIndicator of texteLista) {
+            await frameIndicatori.click(`text= ${numeIndicator}`);
+            await sleep(2);
+        }
+        console.log(`=======got indicatori`, htmlLista);
     }
-    await page.screenshot({ path: 'edemos.png' });
 
     await browser.close();
-
-    async function getChildFrameByName(frame, name) {
-        const frameName = await frame.name();
-
-        if (frameName === name) {
-            return frame;
-        }
-        for (const child of frame.childFrames()) {
-            const resFrame = await getChildFrameByName(child, name);
-            if (resFrame) return resFrame;
-        }
-    }
 })();
 
-function sleep(seconds) {
-    return new Promise(resolve => setTimeout(resolve, seconds * 1000));
-}
