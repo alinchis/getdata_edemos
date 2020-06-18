@@ -87,7 +87,7 @@ async function main() {
         // stage 1: get counties info
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 1: get indexes list\n');
-        getIndexList();
+        getIndexList(today);
 
 
         // 3. else if argument is 'dd'
@@ -96,7 +96,7 @@ async function main() {
         // stage 3: get localities DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download indexes\n');
-        getIndex();
+        getIndex(today);
 
 
 
