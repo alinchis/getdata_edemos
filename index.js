@@ -18,6 +18,7 @@ const localPaths = {
     logs: 'logs',
 };
 const saveFilePath = './data/today/metadata/indexesPaths.csv';
+const saveUatPath = './data/today/metadata/uatList.csv';
 
 // remote paths
 
@@ -97,7 +98,7 @@ async function main() {
         // stage 3: get localities DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download indexes\n');
-        getIndex(today, saveFilePath.replace('today', today));
+        getIndex(today, saveFilePath.replace('today', today), saveUatPath.replace('today', today));
 
 
 

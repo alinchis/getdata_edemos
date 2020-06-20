@@ -3,148 +3,49 @@
 // import libraries
 const {chromium: chrome} = require('playwright');  // Or 'chromium' or 'webkit'.
 const axios = require('axios');
-const cheerio = require('cheerio');
+// const cheerio = require('cheerio');
 const fs = require('fs-extra');
-const qs = require('qs');
+// const qs = require('qs');
 
 // create url paths
 const homePath = 'http://edemos.insse.ro/xmlpserver/PODCA/Reports/Agricultur%C4%83%20-%20silvicultur%C4%83%20-%20mediu.xdo?_xpf=&_xpt=0&_xdo=%2FPODCA%2FReports%2FAgricultur%C4%83%20-%20silvicultur%C4%83%20-%20mediu.xdo&_xmode=2&xdo%3Axdo%3A_paramsP_AN_REF_div_input=&xdo%3Axdo%3A_paramsP_INDIC_TYPE_div_input=Definitiv&_paramsP_INDIC_TYPE=3&xdo%3Axdo%3A_paramsP_INDIC_div_input=AGR101B%20-%20Suprafa%C5%A3a%20fondului%20funciar%20dup%C4%83%20modul%20de%20folosin%C5%A3%C4%83%2C%20pe%20forme%20de%20proprietate&_paramsP_INDIC=1&xdo%3Axdo%3A_paramsP_DEZAGREGARE1_div_input=Mod%20de%20folosinta%20pentru%20suprafata%20agricola&_paramsP_DEZAGREGARE1=21&xdo%3Axdo%3A_paramsP_DEZAGREGARE2_div_input=Forme%20de%20proprietate&_paramsP_DEZAGREGARE2=2&xdo%3Axdo%3A_paramsP_CRITERIU1_div_input=&xdo%3Axdo%3A_paramsP_CRITERIU2_div_input=&xdo%3Axdo%3A_paramsP_MACROREG_div_input=All&_paramsP_MACROREG=*&_paramsP_NREG=Da&xdo%3Axdo%3A_paramsP_REG_div_input=All&_paramsP_REG=*&_paramsP_NJUD=Da&xdo%3Axdo%3A_paramsP_JUD_div_input=All&_paramsP_JUD=*&_paramsP_NMOC=Da&xdo%3Axdo%3A_paramsP_MOC_div_input=&_xt=Agricultur%C4%83%20-%20silvicultur%C4%83%20-%20mediu%20-%20cu%20grafice&_xf=analyze';
 
 // url params
-const urlParams = [
-    {
-        "key": "_xpf",
-        "value": "1",
-    },
-    {
-        "key": "_xpt",
-        "value": "1",
-    },
-    {
-        "key": "_xdo",
-        "value": "/PODCA/Reports/Agricultură - silvicultură - mediu.xdo",
-    },
-    {
-        "key": "_xmode",
-        "value": "2",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_AN_REF_div_input",
-        "value": "All",
-    },
-    {
-        "key": "_paramsP_AN_REF",
-        "value": "*",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_INDIC_div_input",
-        "value": "AGR101B - Suprafaţa fondului funciar după modul de folosinţă, pe forme de proprietate",
-    },
-    {
-        "key": "_paramsP_INDIC",
-        "value": "1",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_DEZAGREGARE1_div_input",
-        "value": "Mod de folosinta pentru suprafata agricola",
-    },
-    {
-        "key": "_paramsP_DEZAGREGARE1",
-        "value": "21",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_DEZAGREGARE2_div_input",
-        "value": "Forme de proprietate",
-    },
-    {
-        "key": "_paramsP_DEZAGREGARE2",
-        "value": "2",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_CRITERIU1_div_input",
-        "value": "All",
-    },
-    {
-        "key": "_paramsP_CRITERIU1",
-        "value": "*",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_CRITERIU2_div_input",
-        "value": "All",
-    },
-    {
-        "key": "_paramsP_CRITERIU2",
-        "value": "*",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_MACROREG_div_input",
-        "value": "All",
-    },
-    {
-        "key": "_paramsP_MACROREG",
-        "value": "*",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_NREG_div_input",
-        "value": "Da",
-    },
-    {
-        "key": "_paramsP_NREG",
-        "value": "Da",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_REG_div_input",
-        "value": "All",
-    },
-    {
-        "key": "_paramsP_REG",
-        "value": "*",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_NJUD_div_input",
-        "value": "Da",
-    },
-    {
-        "key": "_paramsP_NJUD",
-        "value": "Da",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_JUD_div_input",
-        "value": "ARAD",
-    },
-    {
-        "key": "_paramsP_JUD",
-        "value": "2",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_NMOC_div_input",
-        "value": "Selectie detaliata localitati",
-    },
-    {
-        "key": "_paramsP_NMOC",
-        "value": "Da",
-    },
-    {
-        "key": "xdo:xdo:_paramsP_MOC_div_input",
-        "value": "MUNICIPIUL ARAD",
-    },
-    {
-        "key": "_paramsP_MOC",
-        "value": "9262",
-    },
-    {
-        "key": "_xt",
-        "value": "Agricultură - silvicultură - mediu - fără grafice",
-    },
-    {
-        "key": "_xf",
-        "value": "html",
-    },
-    {
-        "key": "_xana",
-        "value": "view",
-    }
-];
+const params = {
+    "_xpf": "1",
+    "_xpt": "1",
+    "_xdo": "/PODCA/Reports/Agricultură - silvicultură - mediu.xdo", // ?
+    "_xmode": "2",
+    "xdo:xdo:_paramsP_AN_REF_div_input": "All",
+    "_paramsP_AN_REF": "*",
+    "xdo:xdo:_paramsP_INDIC_div_input": "AGR101B - Suprafaţa fondului funciar după modul de folosinţă, pe forme de proprietate", // indicator titlu
+    "_paramsP_INDIC": "1", // indicator id
+    "xdo:xdo:_paramsP_DEZAGREGARE1_div_input": "Mod de folosinta pentru suprafata agricola", // dezagregare1 titlu
+    "_paramsP_DEZAGREGARE1": "21", // dezagregare1 id
+    "xdo:xdo:_paramsP_DEZAGREGARE2_div_input": "Forme de proprietate", // dezagregare2 titlu
+    "_paramsP_DEZAGREGARE2": "2", // dezagregare2 id
+    "xdo:xdo:_paramsP_CRITERIU1_div_input": "All",
+    "_paramsP_CRITERIU1": "*",
+    "xdo:xdo:_paramsP_CRITERIU2_div_input": "All",
+    "_paramsP_CRITERIU2": "*",
+    "xdo:xdo:_paramsP_MACROREG_div_input": "All",
+    "_paramsP_MACROREG": "*",
+    "xdo:xdo:_paramsP_NREG_div_input": "Da",
+    "_paramsP_NREG": "Da",
+    "xdo:xdo:_paramsP_REG_div_input": "All",
+    "_paramsP_REG": "*",
+    "xdo:xdo:_paramsP_NJUD_div_input": "Da",
+    "_paramsP_NJUD": "Da",
+    "xdo:xdo:_paramsP_JUD_div_input": "ARAD", // nume judet
+    "_paramsP_JUD": "2", // id judet
+    "xdo:xdo:_paramsP_NMOC_div_input": "Selectie detaliata localitati",
+    "_paramsP_NMOC": "Da",
+    "xdo:xdo:_paramsP_MOC_div_input": "MUNICIPIUL ARAD", // nume uat
+    "_paramsP_MOC": "9262", // siruta uat
+    "_xt": "Agricultură - silvicultură - mediu - fără grafice", // ?
+    "_xf": "html",
+    "_xana": "view",
+};
 
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -190,8 +91,8 @@ function sleep(seconds) {
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// get counties list
-function getCountiesList(pageUrl) {
+// get uat list
+function getUatList(pageUrl, saveUatPath) {
     console.log(`\ngetCountiesList: START`);
     console.log(`\ngetCountiesList: pageUrl = ${pageUrl}\n`);
 
@@ -200,51 +101,74 @@ function getCountiesList(pageUrl) {
         const browser = await chrome.launch({headless: false});
         const page = await browser.newPage();
         await page.goto(pageUrl);
-        // await page.waitForSelector("table.fieldText .parameters");
-        // const mainFrame = page.frame('css=div #xdo:content');
-        // await sleep(5);
 
-        // select county
-        await page.click('div#xdo\\:_paramsP_JUD_div');
-        // const button = await page.selectOption('select#xdo\\:_paramsP_JUD', [['ALBA', '1']]);
-        const testButtonA = await page.click('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
-        // await testButtonA.click();
-        const testButton0 = await page.check('input#xdo\\:xdo\\:_paramsP_JUD_div_cb_2');
-        // await testButton0.click();
-        // await sleep(2);
-        // const testButton = await page.$('div#xdo\\:xdo\\:_paramsP_JUD_div_b');
-        // await testButton.click();
-        // await page.type('input#xdo\\:xdo\\:_paramsP_JUD_div_input', 'BACAU')
-        // await testButton.type('ALBA');
-        // const test = await testButton.innerHTML();
-        // console.log(test);
-        await page.click('div#xdo\\:_paramsP_JUD_div');
-        await page.click('label[for=_paramsP_JUD]');
+        // create return array
+        const returnArray = [];
 
-        // select detailed locality
-        await page.click('div#xdo\\:_paramsP_NMOC_div');
-        await page.selectOption('select#xdo\\:_paramsP_NMOC', 'Da');
-        // const testButton0 = await page.check('input#xdo\\:xdo\\:_paramsP_JUD_div_cb_2');;
-        await page.click('div#xdo\\:_paramsP_NMOC_div');
+        for (let i = 0; i <= 41; i += 1) {
+            // select county
+            await page.click('div#xdo\\:_paramsP_JUD_div');
+            await page.click('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
+            await page.check(`input#xdo\\:xdo\\:_paramsP_JUD_div_cb_${i}`);
+            const county = await page.$(`li#xdo\\:xdo\\:_paramsP_JUD_div_li_${i}`);
+            const countyValueItem = await county.$('input');
+            const countyId = await countyValueItem.getAttribute('value');
+            const countyName = await county.innerText();
+            console.log(`\n${i + 1}/42 JUDETUL :: [ ${countyId}, ${countyName} ]\n`);
+            await page.click('label[for=_paramsP_JUD]');
+
+            // get uat list
+            await page.click('div#xdo\\:_paramsP_MOC_div');
+            const uatUlItem = await page.$('ul#xdo\\:xdo\\:_paramsP_MOC_div_ul');
+            const uatList = await uatUlItem.$$('li');
+            for (const uat of uatList) {
+                // get uat siruta
+                const uatSirutaItem = await uat.$('input');
+                const uatSiruta = await uatSirutaItem.getAttribute('value');
+                // get uat name
+                const uatName = await uat.innerText();
+                returnArray.push([countyId, countyName, uatSiruta, uatName]);
+                console.log(`${i + 1}/42 >>> ${countyId} ${countyName} :: ${uatSiruta} ${uatName}`);
+            }
+            // const uatListHtml = await uatList.innerHTML();
+            // console.log(uatListHtml);
+            await page.click('div#xdo\\:_paramsP_MOC_div');
+            sleep(1);
+
+            // reset selector
+            await page.click('div#xdo\\:_paramsP_JUD_div');
+            await page.click('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
+            await page.click('div#xdo\\:_paramsP_JUD_div');
+
+        }
+
+        // save array to csv file
+        fs.writeFileSync(saveUatPath, returnArray.join('\n'));
+
+        // return array
+        return returnArray;
 
     })();
 
-    // console.log(pageHtml);
-
-    // // load page
-    // const $ = cheerio.load(pageHtml);
-    //
-    // // get counties parent element
-    // const counties = $('select').attr('id', 'xdo:_paramsP_JUD');
-    // $(counties).children().each(county => {
-    //     console.log($(county).text());
-    // })
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get counties list
-function getUatList(pageUrl) {
+async function getTableData() {
 
+    // test request
+    try {
+        const res = await axios({
+            method: 'get',
+            url: 'http://edemos.insse.ro/xmlpserver/PODCA/Reports/Agricultură - silvicultură - mediu',
+            params,
+        })
+
+        console.log(res.request);
+
+    } catch (e) {
+        console.log(e);
+    }
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -366,7 +290,7 @@ function getIndexesParams(indexesArr) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // EXPORTS
-module.exports = (today, inFilePath) => {
+module.exports = (today, inFilePath, saveUatPath) => {
     console.log(`inFilePath: ${inFilePath}`);
 
     // input file is present
@@ -375,14 +299,16 @@ module.exports = (today, inFilePath) => {
         const indexesArr = readCSV(inFilePath, '#').slice(1);
         console.log(`inFilePath: CSV import >>> ${indexesArr.length} items!`);
 
-        // get counties list
-        const countiesList = getCountiesList(indexesArr[0][3]);
-
-        // for each county, get uat list
-        // const uatList = getUatList(indexesArr[0][3]);
+        // get uat list
+        // if uat list file exist read from file, else download uat
+        const uatList = fs.existsSync(saveUatPath) ? readCSV(saveUatPath) : getUatList(indexesArr[0][3], saveUatPath);
+        // console.log(uatList);
 
         // get index parameters
         // const indexesParams = getIndexesParams(indexesArr);
+
+        // get table data
+        getTableData();
 
         // else
     } else {
