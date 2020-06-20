@@ -6,9 +6,6 @@ const { sleep, getChildFrameByName } = require('./utils.js');
 const cheerio = require('cheerio');
 const fs = require('fs-extra');
 
-// paths
-const saveFilePath = './data/today/metadata/indexesPaths.csv';
-
 // ////////////////////////////////////////////////////////////////////////////
 // // METHODS
 
@@ -151,25 +148,23 @@ function getHomePage(urlTable, outPath) {
 
 // /////////////////////////////////////////////////////////////////////////////
 // // EXPORTS
-module.exports = (today) => {
+module.exports = (today, saveFilePath) => {
 
     // prepare write file, if necessary
     // prepare array to hold previous values
     let urlTable = [];
-    // update save file path with current date
-    const newSaveFilePath = saveFilePath.replace('today', today);
 
     // if write file does not exist
-    if (!fs.existsSync(newSaveFilePath)) {
+    if (!fs.existsSync(saveFilePath)) {
         // start write file
         const headerArr = [ 'domeniu', 'tip_indicator', 'indicator', 'url' ];
-        fs.writeFileSync(newSaveFilePath, `${headerArr.join('#')}\n`);
+        fs.writeFileSync(saveFilePath, `${headerArr.join('#')}\n`);
 
         // else
     } else {
-        urlTable = readCSV(newSaveFilePath).slice(1);
+        urlTable = readCSV(saveFilePath).slice(1);
     }
 
     // get data
-    getHomePage(urlTable, newSaveFilePath);
+    getHomePage(urlTable, saveFilePath);
 }

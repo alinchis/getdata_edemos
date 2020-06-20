@@ -6,7 +6,7 @@ const fs = require('fs-extra');
 // import local modules
 const createFolder = require('./modules/create-folder');
 const getIndexList = require('./modules/get-index-list');
-const getIndex = require('./modules/get-index');
+const getIndex = require('./modules/get-index-params');
 const exportToCsv = require('./modules/export-to-csv');
 
 // local paths
@@ -17,6 +17,7 @@ const localPaths = {
     exports: 'exports',
     logs: 'logs',
 };
+const saveFilePath = './data/today/metadata/indexesPaths.csv';
 
 // remote paths
 
@@ -55,7 +56,7 @@ async function main() {
     const helpText = `\n Available commands:\n\n\
   1. -h  : display help text\n\
   2. -d  : download index list\n\
-  3. -dd : download indexex\n`;
+  3. -dd : download indexes\n`;
 
     // get command line arguments
     const arguments = process.argv;
@@ -87,7 +88,7 @@ async function main() {
         // stage 1: get counties info
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 1: get indexes list\n');
-        getIndexList(today);
+        getIndexList(today, saveFilePath.replace('today', today));
 
 
         // 3. else if argument is 'dd'
@@ -96,7 +97,7 @@ async function main() {
         // stage 3: get localities DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download indexes\n');
-        getIndex(today);
+        getIndex(today, saveFilePath.replace('today', today));
 
 
 
