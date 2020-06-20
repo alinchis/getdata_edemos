@@ -19,6 +19,9 @@ const localPaths = {
 };
 const saveFilePath = './data/today/metadata/indexesPaths.csv';
 const saveUatPath = './data/today/metadata/uatList.csv';
+const saveUrlPrimaryPath = './data/today/metadata/urlPrimaryList.csv';
+const saveUrlPerfomancePath = './data/today/metadata/urlPerformanceList.csv';
+const saveLogPath = './data/today/logs/logs.csv';
 
 // remote paths
 
@@ -98,7 +101,14 @@ async function main() {
         // stage 3: get localities DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download indexes\n');
-        getIndex(today, saveFilePath.replace('today', today), saveUatPath.replace('today', today));
+        getIndex(
+            today,
+            saveFilePath.replace('today', today),
+            saveUatPath.replace('today', today),
+            saveUrlPrimaryPath.replace('today', today),
+            saveUrlPerfomancePath.replace('today', today),
+            saveLogPath.replace('today', today)
+        );
 
 
 
