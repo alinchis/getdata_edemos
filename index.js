@@ -6,8 +6,7 @@ const fs = require('fs-extra');
 // import local modules
 const createFolder = require('./modules/create-folder');
 const getIndexList = require('./modules/get-index-list');
-const getIndex = require('./modules/get-index-params');
-const exportToCsv = require('./modules/export-to-csv');
+const getIndex = require('./modules/get-index-data');
 
 // local paths
 const dataPath = './data';
@@ -19,9 +18,7 @@ const localPaths = {
 };
 const saveFilePath = './data/today/metadata/indexesPaths.csv';
 const saveUatPath = './data/today/metadata/uatList.csv';
-const saveUrlPrimaryPath = './data/today/metadata/urlPrimaryList.csv';
-const saveUrlPerfomancePath = './data/today/metadata/urlPerformanceList.csv';
-const saveLogPath = './data/today/logs/logs.csv';
+const saveLogPath = './data/today/logs/logsType.csv';
 
 // remote paths
 
@@ -50,17 +47,13 @@ async function main() {
     const tablesPath = `${dataPath}/${today}/${localPaths['tables']}`;
     const exportsPath = `${dataPath}/${today}/${localPaths['exports']}`;
     const logsPath = `${dataPath}/${today}/${localPaths['logs']}`;
-    // create save files paths variables
-    const countiesSavePath = `${metadataPath}/year_counties.json`;
-    const ecSavePath = `${metadataPath}/year_exam-centers.json`;
-    const studentsSavePath = `${tablesPath}/year_students.json`;
-    const logFilePath = `${logsPath}/year.csv`;
 
     // help text
     const helpText = `\n Available commands:\n\n\
   1. -h  : display help text\n\
   2. -d  : download index list\n\
-  3. -dd : download indexes\n`;
+  3. -d1 : download primary data\n\
+  4. -d2 : download performance data\n`;
 
     // get command line arguments
     const arguments = process.argv;
@@ -95,20 +88,36 @@ async function main() {
         getIndexList(today, saveFilePath.replace('today', today));
 
 
-        // 3. else if argument is 'dd'
-    } else if (mainArg === '-dd') {
+        // 3. else if argument is 'd1'
+    } else if (mainArg === '-d1') {
 
-        // stage 3: get localities DATA
+        // stage 3: get uat primany DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
-        console.log('STAGE 2: Download indexes\n');
+        console.log('STAGE 2: Download primary data\n');
         getIndex(
+            'primary',
             today,
             saveFilePath.replace('today', today),
             saveUatPath.replace('today', today),
-            saveUrlPrimaryPath.replace('today', today),
-            saveUrlPerfomancePath.replace('today', today),
-            saveLogPath.replace('today', today)
+            saveLogPath.replace('today', today),
+            tablesPath
         );
+
+        // 4. else if argument is 'd2'
+    } else if (mainArg === '-d2') {
+
+        // stage 3: get uat performance DATA
+        console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
+        console.log('STAGE 2: Download performance data\n');
+        getIndex(
+            'performance',
+            today,
+            saveFilePath.replace('today', today),
+            saveUatPath.replace('today', today),
+            saveLogPath.replace('today', today),
+            tablesPath
+        );
+
 
 
 
