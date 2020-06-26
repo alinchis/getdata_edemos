@@ -11,6 +11,7 @@ const getPerformanceData = require('./modules/get-performance-data');
 
 // constants
 const eDemosFirstYear = 1990;
+const eDemosLastYear = 2020;
 
 // local paths
 const dataPath = './data';
@@ -105,6 +106,7 @@ async function main() {
         getPrimaryData(
             today,
             eDemosFirstYear,
+            eDemosLastYear,
             manualIndexesListFilePath,
             manualIndexesListUrl,
             indexesFilePath.replace('today', today),

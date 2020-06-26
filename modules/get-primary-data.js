@@ -195,7 +195,7 @@ async function mcCBSelectItem(element, marker, choice, step = 1, maxChoice = cho
             if (choice + i < maxChoice) await element.click(`li#xdo\\:xdo\\:${marker}_div_li_${choice + i} label input`);
         }
     }
-    
+
     // click to register input selection
     await element.click(`label[for=${marker}]`);
 }
@@ -223,7 +223,7 @@ async function getItemList(element, marker) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get primary table data
-async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
+async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tablesPath) {
     console.log(`\ngetPrimaryTableData: START\n`);
     console.log(`received [ ${indexList.length} ] items for index list`);
 
@@ -262,7 +262,7 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
 
         let logArray = [];
         let lastLog = {
-            y: currentIndexYearStart - firstYear,
+            y: currentIndexYearStart,
             k1: 0,
             k2: 0,
             j: 0,
@@ -304,7 +304,7 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
 
                 // launch browser
                 const browser = await chrome.launch({
-                    headless: true,
+                    headless: false,
                 });
                 const page = await browser.newPage();
                 // load page in browser
@@ -314,11 +314,20 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
                 // await page.click('div.tabBGN2L a.tabLink2L');
 
                 // for each year of available data, for current index
-                for (let y = lastLog.y; y < lastLog.y + currentIndexYearsCount; y += currentIndexYearsStep) {
-                    const indexY = `${indexI} y[${y}-${y + currentIndexYearsStep}/${lastLog.y + currentIndexYearsCount}]`;
+                for (let y = lastLog.y; y <= currentIndexYearEnd; y += currentIndexYearsStep) {
+                    const indexY = `${indexI} y[${y}-${y + currentIndexYearsStep - 1}/${currentIndexYearStart}-${currentIndexYearEnd}]`;
 
                     // select years from input: '1. An referinta'
-                    await mcCBSelectItem(page, '_paramsP_AN_REF', y, currentIndexYearsStep, lastLog.y + currentIndexYearsCount);
+                    const yearStartIndex = lastYear - y; // year index is reversed (year 2020 > #0, year 1990 > #30)
+                    const yearLastIndex = (yearStartIndex - currentIndexYearsStep) > 0 ? (yearStartIndex - currentIndexYearsStep) : -1;
+                    // await mcCBSelectItem(page, '_paramsP_AN_REF', y, currentIndexYearsStep, lastLog.y + currentIndexYearsCount);
+                    // select all items from input
+                    await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
+                    for (let i = yearStartIndex; i > yearLastIndex; i -= 1) {
+                        await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_${i} label input`);
+                    }
+                    // click to register input selection
+                    await page.click(`label[for=_paramsP_AN_REF]`);
 
                     // get list of current indexes from input: '2. Indicatori'
                     // const currentItemIndex = ( await getItemList(page, '_paramsP_INDIC')).indexOf(currentIndexName);
@@ -338,7 +347,7 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
                     // for each item in dezagregare 1 list
                     for (let k1 = lastLog.k1; k1 < dez1List.length; k1 += 1) {
                         // assemble current index path
-                        const indexK1 = `${indexY} ${k1 + 1}/${dez1List.length}`;
+                        const indexK1 = `${indexY} k1[${k1 + 1}/${dez1List.length}]`;
                         console.log(`\n${indexK1}\n`);
 
                         // select dezagregare_1 item
@@ -352,7 +361,7 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
                         // for each item in dezagregare_2 list
                         for (let k2 = lastLog.k2; k2 < dez2List.length; k2 += 1) {
                             // assemble current index path
-                            const indexK2 = `${indexK1} ${k2 + 1}/${dez2List.length}`;
+                            const indexK2 = `${indexK1} k1[${k2 + 1}/${dez2List.length}]`;
                             console.log(`\n${indexK2}\n`);
 
                             // select dezagregare_2 item
@@ -361,7 +370,7 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
 
 
                             // assemble current index path
-                            const indexK3 = `${indexK2} ${j + 1}/42`;
+                            const indexK3 = `${indexK2} j[${j + 1}/42]`;
                             // console.log(`\n${indexK3}\n`);
 
                             // select county
@@ -385,7 +394,7 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
                             // for each item in uat list
                             for (let k4 = lastLog.k4; k4 < uatList.length; k4 += currentIndexUatStep) {
                                 // assemble current index path
-                                const indexK4 = `${indexK3} ${k4 + 1}/${uatList.length}`;
+                                const indexK4 = `${indexK3} k4[${k4 + 1}/${uatList.length}]`;
                                 // console.log(`\n${indexK4}\n`);
 
                                 // select uat
@@ -423,7 +432,16 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
                                         console.log('NO DATA was returned, continue to next query ...\n');
                                         // save log
                                         fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uatName, 'NO DATA']}\n`);
-                                        // continue skip to next query
+                                        // reset uat selector, set back to none
+                                        page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
+                                        await page.click('div#xdo\\:_paramsP_MOC_div');
+                                        for (let s = 0; s < currentIndexUatStep; s += 1) {
+                                            const newK4 = k4 + s;
+                                            if (newK4 < uatList.length) await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
+                                        }
+                                        await page.click('label[for=_paramsP_MACROREG]');
+
+                                        // continue, skip to next query
                                         continue;
                                     }
 
@@ -551,6 +569,15 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
 
                         }
                     }
+
+                    // reset year selection
+                    await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
+                    // select all
+                    await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_all label input`);
+                    // deselect all
+                    await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_all label input`);
+                    // register selection
+                    await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
                 }
 
 
@@ -573,7 +600,7 @@ async function getPrimaryTableData(firstYear, indexList, logsPath, tablesPath) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // EXPORTS
-module.exports = async (today, firstYear, manualIndexesListFilePath, manualIndexesListUrl, indexesFilePath, logsPath, saveIndexListPath, tablesPath) => {
+module.exports = async (today, firstYear, lastYear, manualIndexesListFilePath, manualIndexesListUrl, indexesFilePath, logsPath, saveIndexListPath, tablesPath) => {
     console.log(`indexesFilePath: ${indexesFilePath}`);
 
     // check if manual index list file exists
@@ -595,7 +622,7 @@ module.exports = async (today, firstYear, manualIndexesListFilePath, manualIndex
             console.log(`Found ${indexList.length - 1} TOTAL primary indexes\n`);
 
             // get data for primary indexes
-            await getPrimaryTableData(firstYear, indexList.slice(1), logsPath, tablesPath);
+            await getPrimaryTableData(firstYear, lastYear, indexList.slice(1), logsPath, tablesPath);
 
 
             // else
