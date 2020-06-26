@@ -9,6 +9,9 @@ const getIndexList = require('./modules/get-index-list');
 const getPrimaryData = require('./modules/get-primary-data');
 const getPerformanceData = require('./modules/get-performance-data');
 
+// constants
+const eDemosFirstYear = 1990;
+
 // local paths
 const dataPath = './data';
 const localPaths = {
@@ -17,14 +20,15 @@ const localPaths = {
     exports: 'exports',
     logs: 'logs',
 };
-const saveFilePath = './data/today/metadata/indexesPaths.csv';
+const indexesFilePath = './data/today/metadata/indexesPaths.csv';
 const saveUatPath = './data/today/metadata/uatList.csv';
 // const saveLogPath = './data/today/logs/logsType.csv';
 const primaryIndexListPath = './data/today/metadata/primaryIndexList.csv';
 const performanceIndexListPath = './data/today/metadata/performanceIndexList.csv';
+const manualIndexesListFilePath = './data/export_available_indicators.csv';
 
 // remote paths
-
+const manualIndexesListUrl = 'http://edemos.insse.ro/portal/faces/oracle/webcenter/portalapp/pages/report-access.jspx?_adf.ctrl-state=11ci4hxqyw_4&_afrLoop=2928625242659429&_afrWindowMode=0&_afrWindowId=11ci4hxqyw_1';
 
 
 // ////////////////////////////////////////////////////////////////////////////
@@ -88,7 +92,7 @@ async function main() {
         // stage 1: get counties info
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 1: get indexes list\n');
-        getIndexList(today, saveFilePath.replace('today', today));
+        getIndexList(today, indexesFilePath.replace('today', today));
 
 
         // 3. else if argument is 'd1'
@@ -97,13 +101,19 @@ async function main() {
         // stage 3: get uat primany DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download primary data\n');
+
         getPrimaryData(
             today,
-            saveFilePath.replace('today', today),
+            eDemosFirstYear,
+            manualIndexesListFilePath,
+            manualIndexesListUrl,
+            indexesFilePath.replace('today', today),
             logsPath,
             primaryIndexListPath.replace('today', today),
             tablesPath
         );
+
+
 
         // 4. else if argument is 'd2'
     } else if (mainArg === '-d2') {
@@ -111,9 +121,10 @@ async function main() {
         // stage 3: get uat performance DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download performance data\n');
+
         getPerformanceData(
             today,
-            saveFilePath.replace('today', today),
+            indexesFilePath.replace('today', today),
             saveUatPath.replace('today', today),
             logsPath,
             performanceIndexListPath.replace('today', today),
