@@ -6,7 +6,8 @@ const fs = require('fs-extra');
 // import local modules
 const createFolder = require('./modules/create-folder');
 const getIndexList = require('./modules/get-index-list');
-const getIndex = require('./modules/get-index-data');
+const getPrimaryData = require('./modules/get-primary-data');
+const getPerformanceData = require('./modules/get-performance-data');
 
 // local paths
 const dataPath = './data';
@@ -18,7 +19,9 @@ const localPaths = {
 };
 const saveFilePath = './data/today/metadata/indexesPaths.csv';
 const saveUatPath = './data/today/metadata/uatList.csv';
-const saveLogPath = './data/today/logs/logsType.csv';
+// const saveLogPath = './data/today/logs/logsType.csv';
+const primaryIndexListPath = './data/today/metadata/primaryIndexList.csv';
+const performanceIndexListPath = './data/today/metadata/performanceIndexList.csv';
 
 // remote paths
 
@@ -94,12 +97,11 @@ async function main() {
         // stage 3: get uat primany DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download primary data\n');
-        getIndex(
-            'primary',
+        getPrimaryData(
             today,
             saveFilePath.replace('today', today),
-            saveUatPath.replace('today', today),
-            saveLogPath.replace('today', today),
+            logsPath,
+            primaryIndexListPath.replace('today', today),
             tablesPath
         );
 
@@ -109,12 +111,12 @@ async function main() {
         // stage 3: get uat performance DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download performance data\n');
-        getIndex(
-            'performance',
+        getPerformanceData(
             today,
             saveFilePath.replace('today', today),
             saveUatPath.replace('today', today),
-            saveLogPath.replace('today', today),
+            logsPath,
+            performanceIndexListPath.replace('today', today),
             tablesPath
         );
 

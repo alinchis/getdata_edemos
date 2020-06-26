@@ -83,6 +83,60 @@ function readCSV(filePath, colDelimiter = ',', strDelimiter = '') {
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// read log into array for continue downloads
+function readLogArray(logFilePath) {
+    const returnArray = [];
+
+    const logArray = readCSV(logFilePath);
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// get list of indexes
+async function getIndexList(urlTable) {
+    console.log(`\ngetIndexList: START`);
+
+    //#1 launch browser
+    const browser = await chrome.launch({headless: false});
+    const page = await browser.newPage();
+
+    const returnArray = [];
+
+    for (let i = 0; i < urlTable.length; i += 1) {
+        // assemble current index path
+        const indexI = `${i + 1}/${urlTable.length}`;
+        console.log(`\n${indexI}\n`);
+
+        // load page in browser
+        await page.goto(urlTable[i][3]);
+
+        // get list of current indexes from input: '2. Indicatori'
+        const indexList = await getItemList(page, '_paramsP_INDIC');
+
+        //#3 for each indicator
+        for (let j = 0; j < indexList.length; j += 1) {
+
+            // select indicator item
+            const currentIndex = await mcSelectItem(page, '_paramsP_INDIC', j);
+            console.log(`${indexI} >>> ${currentIndex}`);
+
+            // create file path
+            const indexId = currentIndex.split(' ')[0];
+
+            // push index into return array
+            const currentRow = [];
+            returnArray.push(currentRow);
+        }
+    }
+
+    // close browser
+    await browser.close();
+
+    // return new array
+    return returnArray;
+}
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // sleep
 function sleep(seconds) {
     return new Promise(resolve => setTimeout(resolve, seconds * 1000));
@@ -202,9 +256,6 @@ function getPrimaryTableData(urlTable, saveLogPath, tablesPath) {
         const browser = await chrome.launch({headless: false});
         const page = await browser.newPage();
 
-        // Configure the navigation timeout
-        // await page.setDefaultTimeout(0);
-
         //#2 for each page in url table
         for (let i = 0; i < urlTable.length; i += 1) {
             // assemble current index path
@@ -231,9 +282,6 @@ function getPrimaryTableData(urlTable, saveLogPath, tablesPath) {
 
             //#3 for each indicator
             for (let j = 0; j < indexList.length; j += 1) {
-                // assemble current index path
-                const indexJ = `${indexI} ${j + 1}/${indexList.length}`;
-                console.log(`\n${indexJ}\n`);
 
                 // select indicator item
                 const currentIndex = await mcSelectItem(page, '_paramsP_INDIC', j);
@@ -242,6 +290,10 @@ function getPrimaryTableData(urlTable, saveLogPath, tablesPath) {
                 // create file path
                 const indexId = currentIndex.split(' ')[0];
                 const indexFilePath = `${tablesPath}/${indexId}.csv`;
+
+                // assemble current index path
+                const indexJ = `${indexI} ${j + 1}/${indexList.length} [ ${indexId} ] `;
+                console.log(`\n${indexJ}\n`);
 
                 // if current index file already exists, skip to the next
                 if (fs.existsSync(indexFilePath)) {
@@ -331,42 +383,51 @@ function getPrimaryTableData(urlTable, saveLogPath, tablesPath) {
                                 let tableFlag = false;
                                 // error check
                                 // do {
-                                    try {
-                                        // get html table from frame
-                                        tableFrame = await page.frame('xdo\:docframe1');
-                                        await tableFrame.waitForSelector('div.tableContainer');
-                                        // tableFlag = true;
-                                    } catch (e) {
-                                        console.log(e.message);
-                                        // save log
-                                        fs.appendFileSync(saveLogPath, `${[i, j, indexId, k1, k2, k3, countyName, k4, uatName, 'Timeout ERROR'].join(',')}\n`)
+                                try {
+                                    // get html table from frame
+                                    tableFrame = await page.frame('xdo\:docframe1');
+                                    await tableFrame.waitForSelector('div.tableContainer');
+                                    // tableFlag = true;
+                                } catch (e) {
+                                    console.log(e.message);
+                                    // save log
+                                    fs.appendFileSync(saveLogPath, `${[i, j, indexId, k1, k2, k3, countyName, k4, uatName, 'Timeout ERROR'].join(',')}\n`)
 
-                                        // // reset county selector, set to all
-                                        // await page.waitForSelector('div#xdo\\:_paramsP_JUD_div')
-                                        // await page.click('div#xdo\\:_paramsP_JUD_div');
-                                        // await page.check('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
-                                        // await page.click('div#xdo\\:_paramsP_JUD_div');
-                                        //
-                                        // // select county
-                                        // await page.waitForSelector('div#xdo\\:_paramsP_JUD_div')
-                                        // await page.click('div#xdo\\:_paramsP_JUD_div');
-                                        // await page.uncheck('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
-                                        // await page.check(`input#xdo\\:xdo\\:_paramsP_JUD_div_cb_${k3}`);
-                                        // await page.click('label[for=_paramsP_MACROREG]');
-                                        //
-                                        // // select uat
-                                        // await page.waitForSelector('div#xdo\\:_paramsP_MOC_div')
-                                        // await page.click('div#xdo\\:_paramsP_MOC_div');
-                                        // await page.check(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${k4}`);
-                                        // await page.click('label[for=_paramsP_MACROREG]');
-                                        //
-                                        // // click 'Apply' button
-                                        // await page.click('button[title="Apply"]');
-                                        // sleep(3);
+                                    // // reset county selector, set to all
+                                    // await page.waitForSelector('div#xdo\\:_paramsP_JUD_div')
+                                    // await page.click('div#xdo\\:_paramsP_JUD_div');
+                                    // await page.check('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
+                                    // await page.click('div#xdo\\:_paramsP_JUD_div');
+                                    //
+                                    // // select county
+                                    // await page.waitForSelector('div#xdo\\:_paramsP_JUD_div')
+                                    // await page.click('div#xdo\\:_paramsP_JUD_div');
+                                    // await page.uncheck('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
+                                    // await page.check(`input#xdo\\:xdo\\:_paramsP_JUD_div_cb_${k3}`);
+                                    // await page.click('label[for=_paramsP_MACROREG]');
+                                    //
+                                    // // select uat
+                                    // await page.waitForSelector('div#xdo\\:_paramsP_MOC_div')
+                                    // await page.click('div#xdo\\:_paramsP_MOC_div');
+                                    // await page.check(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${k4}`);
+                                    // await page.click('label[for=_paramsP_MACROREG]');
+                                    //
+                                    // // click 'Apply' button
+                                    // await page.click('button[title="Apply"]');
+                                    // sleep(3);
 
-                                        continue;
+                                    // reset uat selector, set back to none
+                                    page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
+                                    await page.click('div#xdo\\:_paramsP_MOC_div');
+                                    await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${k4}`);
+                                    await page.click('label[for=_paramsP_MACROREG]');
 
-                                    }
+                                    // wait a second
+                                    await sleep(1);
+
+                                    continue;
+
+                                }
                                 // } while (!tableFlag);
 
 
@@ -478,9 +539,6 @@ function getPerformanceTableData(urlTable, saveLogPath, tablesPath) {
 
         // Configure the navigation timeout
         await page.setDefaultTimeout(0);
-
-        // create return array
-        const returnArray = [];
 
         //#2 for each page in url table
         for (let i = 0; i < urlTable.length; i += 1) {
@@ -739,10 +797,10 @@ function getPerformanceTableData(urlTable, saveLogPath, tablesPath) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // EXPORTS
-module.exports = (dataType, today, saveFilePath, saveUatPath, saveLogPath, tablesPath) => {
+module.exports = (today, saveFilePath, saveUatPath, saveLogPath, saveIndexListPath, tablesPath) => {
     console.log(`saveFilePath: ${saveFilePath}`);
 
-       // input file is present
+    // input file is present
     if (fs.existsSync(saveFilePath)) {
         // read file into array
         const indexesArr = readCSV(saveFilePath, '#').slice(1);
@@ -753,6 +811,8 @@ module.exports = (dataType, today, saveFilePath, saveUatPath, saveLogPath, table
         // const uatList = fs.existsSync(saveUatPath) ? readCSV(saveUatPath) : getUatList(indexesArr[0][3], saveUatPath);
         // console.log(uatList)
 
+        //
+
         // // split index list on type of index, have different selection
         // creat list of primary indexes, 13 selection boxes
         const primaryIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori primari');
@@ -762,22 +822,27 @@ module.exports = (dataType, today, saveFilePath, saveUatPath, saveLogPath, table
         // if request for primary data
         if (dataType === 'primary') {
 
+            // get list of indexes
+
+
             // start log file
-            const logHeaderArr = ['i', 'j', 'indicator', 'k1', 'k2', 'k3', 'judet', 'k4', 'uat'];
-            fs.writeFileSync(saveLogPath.replace('Type', 'Primary'), `${logHeaderArr.join(',')}\n`);
+            // const logHeaderArr = ['i', 'j', 'indicator', 'k1', 'k2', 'k3', 'judet', 'k4', 'uat', 'message'];
+            // const saveLogPathPrimary = saveLogPath.replace('Type', 'Primary');
+            // if (!fs.existsSync(saveLogPathPrimary)) fs.writeFileSync(saveLogPathPrimary, `${logHeaderArr.join(',')}\n`);
 
             // get data for primary indexes
-            getPrimaryTableData(primaryIndexesArr, saveLogPath, tablesPath);
+            getPrimaryTableData(primaryIndexesArr, saveLogPath.replace('Type', 'Primary'), tablesPath);
 
             // else get performance data
         } else {
 
             // start log file
-            const logHeaderArr = ['i', 'j', 'indicator', 'k1', 'k2', 'k3', 'judet', 'k4', 'uat'];
-            fs.writeFileSync(saveLogPath.replace('Type', 'Performance'), `${logHeaderArr.join(',')}\n`);
+            const logHeaderArr = ['i', 'j', 'indicator', 'k1', 'k2', 'k3', 'judet', 'k4', 'uat', 'message'];
+            const saveLogPathPerformance = saveLogPath.replace('Type', 'Performance');
+            if (fs.existsSync(saveLogPathPerformance)) fs.writeFileSync(saveLogPathPerformance, `${logHeaderArr.join(',')}\n`);
 
             // get data for performance indexes
-            getPerformanceTableData(performanceIndexesArr, saveLogPath, tablesPath);
+            getPerformanceTableData(performanceIndexesArr, saveLogPath.replace('Type', 'Performance'), tablesPath);
         }
 
 
