@@ -189,10 +189,10 @@ async function mcCBSelectItem(element, marker, choice, step = 1, maxChoice = cho
     // select all items from input
     await element.click(`div#xdo\\:${marker}_div`);
     if (choice === 'all') {
-        await element.click(`li#xdo\\:xdo\\:${marker}_div_li_${choice} label input`);
+        await element.check(`li#xdo\\:xdo\\:${marker}_div_li_${choice} label input`);
     } else {
         for (let i = 0; i < step; i += 1) {
-            if (choice + i < maxChoice) await element.click(`li#xdo\\:xdo\\:${marker}_div_li_${choice + i} label input`);
+            if (choice + i < maxChoice) await element.check(`li#xdo\\:xdo\\:${marker}_div_li_${choice + i} label input`);
         }
     }
 
@@ -239,6 +239,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
         const currentIndexName = indexList[i][4];
         const currentIndexFilePath = `${tablesPath}/${currentIndexName.replace('/', '-')}.csv`;
         const currentIndexMarkerPath = `${logsPath}/_downloading_${currentIndexName}`;
+        const currentIndexDonePath = `${logsPath}/_done_${currentIndexName}`;
         const currentIndexLogPath = `${logsPath}/${currentIndexName.replace('/', '-')}.csv`;
         const currentIndexList = indexList.filter(item => item[0] === indexList[i][0]);
         const currentIndexIndex = currentIndexList.map(item => item[4]).indexOf(currentIndexName);
@@ -249,9 +250,9 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
         const currentIndexUatStep = Number(indexList[i][14]);
 
 
-        // if download marker for current index file already exists, skip to the next
+        // if download or done marker for current index file already exists, skip to the next
         console.log(`current index marker file path: '${currentIndexMarkerPath}'`);
-        if (fs.existsSync(currentIndexMarkerPath)) {
+        if (fs.existsSync(currentIndexMarkerPath) || fs.existsSync(currentIndexDonePath)) {
             console.log('marker file present, skipping current index ...\n');
             continue;
             // else, create marker file to signal dowloading
@@ -304,7 +305,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
 
                 // launch browser
                 const browser = await chrome.launch({
-                    headless: false,
+                    headless: true,
                 });
                 const page = await browser.newPage();
                 // load page in browser
@@ -335,11 +336,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
                     const currentIndex = await mcSelectItem(page, '_paramsP_INDIC', currentIndexIndex);
                     console.log(`${currentIndex}\n`);
 
-                    // select all items from input: '5. Criteriu 1'
-                    await mcCBSelectItem(page, '_paramsP_CRITERIU1', 'all');
-                    // select all items from input: '6. Criteriu 2'
-                    await mcCBSelectItem(page, '_paramsP_CRITERIU2', 'all');
-
+                    
                     // get dezagregare_1 list of items from input: '3. Dezagregare 1'
                     const dez1List = await getItemList(page, '_paramsP_DEZAGREGARE1');
 
@@ -396,6 +393,11 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
                                 // assemble current index path
                                 const indexK4 = `${indexK3} k4[${k4 + 1}/${uatList.length}]`;
                                 // console.log(`\n${indexK4}\n`);
+
+                                // select all items from input: '5. Criteriu 1'
+                                await mcCBSelectItem(page, '_paramsP_CRITERIU1', 'all');
+                                // select all items from input: '6. Criteriu 2'
+                                await mcCBSelectItem(page, '_paramsP_CRITERIU2', 'all');
 
                                 // prepare arrays
                                 const uats = [];
@@ -600,6 +602,10 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
             }
 
         }
+
+        // mark file as done
+        console.log('index table download DONE!\n');
+        fs.writeFileSync(currentIndexDonePath, 'done\n');
 
         // remove current index download marker file
         if (fs.existsSync(currentIndexMarkerPath)) fs.unlinkSync(currentIndexMarkerPath);
