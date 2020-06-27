@@ -257,7 +257,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
             // else, create marker file to signal dowloading
         } else {
             console.log('marker file is not present, creating ...\n');
-            fs.writeFileSync(currentIndexMarkerPath, '');
+            fs.writeFileSync(currentIndexMarkerPath, 'marker\n');
         }
 
         let logArray = [];
@@ -315,7 +315,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
 
                 // for each year of available data, for current index
                 for (let y = lastLog.y; y <= currentIndexYearEnd; y += currentIndexYearsStep) {
-                    const indexY = `${indexI} y[${y}-${y + currentIndexYearsStep - 1}/${currentIndexYearStart}-${currentIndexYearEnd}]`;
+                    const indexY = `${indexI} ${currentIndexId} y[${y}-${y + currentIndexYearsStep - 1}/${currentIndexYearStart}-${currentIndexYearEnd}]`;
 
                     // select years from input: '1. An referinta'
                     const yearStartIndex = lastYear - y; // year index is reversed (year 2020 > #0, year 1990 > #30)
@@ -397,18 +397,27 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
                                 const indexK4 = `${indexK3} k4[${k4 + 1}/${uatList.length}]`;
                                 // console.log(`\n${indexK4}\n`);
 
+                                // prepare arrays
+                                const uats = [];
+
                                 // select uat
                                 await page.waitForSelector('div#xdo\\:_paramsP_MOC_div')
                                 await page.click('div#xdo\\:_paramsP_MOC_div');
                                 for (let s = 0; s < currentIndexUatStep; s += 1) {
                                     const newK4 = k4 + s;
-                                    if (newK4 < uatList.length) await page.check(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
+                                    if (newK4 < uatList.length) {
+                                        // get element for processing
+                                        const uat = await page.$(`li#xdo\\:xdo\\:_paramsP_MOC_div_li_${newK4}`);
+                                        const uatValueItem = await uat.$('input');
+                                        const uatId = await uatValueItem.getAttribute('value'); // SIRUTA code
+                                        const uatName = await uat.innerText();
+                                        uats.push([uatId, uatName]);
+                                        // check item in list
+                                        await page.check(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
+                                    };
                                 }
-                                const uat = await page.$(`li#xdo\\:xdo\\:_paramsP_MOC_div_li_${k4}`);
-                                const uatValueItem = await uat.$('input');
-                                const uatId = await uatValueItem.getAttribute('value');
-                                const uatName = await uat.innerText();
-                                console.log(`${indexK4} >>> [ ${countyId}, ${countyName} ] > [ ${uatId}, ${uatName} ]`);
+
+                                console.log(`${indexK4} >>> [ ${countyId}, ${countyName} ] > ${uats}`);
                                 // click to register uat selection
                                 // await uat.click();
                                 await page.click('label[for=_paramsP_MACROREG]');
@@ -431,7 +440,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
                                     if (textTags.length === 1) {
                                         console.log('NO DATA was returned, continue to next query ...\n');
                                         // save log
-                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uatName, 'NO DATA']}\n`);
+                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA']}\n`);
                                         // reset uat selector, set back to none
                                         page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
                                         await page.click('div#xdo\\:_paramsP_MOC_div');
@@ -492,12 +501,13 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
                                         // push each item into new array
                                         converted[1].forEach((row) => {
                                             // create new row element
+                                            const rowUat = uats.filter(item => item[1] === row['8'])[0];
                                             const newRow = [
                                                 row['0'], // 'AN'
                                                 row['2'], // 'MACROREGIUNE'
                                                 row['4'], // 'REGIUNE'
                                                 row['6'], // 'JUDET'
-                                                uatId,
+                                                rowUat[0],// 'SIRUTA'
                                                 row['8'], // 'LOCALITATE'
                                                 row['9'], // 'EV. LOC'
                                                 row['10'], // 'DEZAGREGARE1'
@@ -516,17 +526,17 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
                                         });
 
                                         // save log
-                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uatName, 'OK'].join(',')}\n`);
+                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uats[0][1], 'OK'].join(',')}\n`);
 
                                     } else {
                                         // save log
-                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uatName, 'NO DATA'].join(',')}\n`);
+                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA'].join(',')}\n`);
                                     }
 
                                 } catch (e) {
                                     console.log(`ERROR getting tabel from frame: ${e.message}\n`);
                                     // save log
-                                    fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uatName, e.message.split('\n')[0]].join(',')}\n`);
+                                    fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uats[0][1], e.message.split('\n')[0]].join(',')}\n`);
 
                                     // reset uat selector, set back to none
                                     page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
@@ -589,10 +599,10 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
                 console.log(e);
             }
 
-            // remove current index download marker file
-            fs.unlinkSync(currentIndexMarkerPath);
-
         }
+
+        // remove current index download marker file
+        if (fs.existsSync(currentIndexMarkerPath)) fs.unlinkSync(currentIndexMarkerPath);
 
     }
 }
