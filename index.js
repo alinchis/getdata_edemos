@@ -50,11 +50,12 @@ function getCurrentDate() {
 async function main() {
     // get current date
     const today = getCurrentDate();
+    console.log(`@index:main >>> current date = ${today}`);
     // create folder paths variables
-    const metadataPath = `${dataPath}/${today}/${localPaths['metadata']}`;
-    const tablesPath = `${dataPath}/${today}/${localPaths['tables']}`;
-    const exportsPath = `${dataPath}/${today}/${localPaths['exports']}`;
-    const logsPath = `${dataPath}/${today}/${localPaths['logs']}`;
+    const metadataPath = `${dataPath}/${today}/${localPaths.metadata}`;
+    const tablesPath = `${dataPath}/${today}/${localPaths.tables}`;
+    const exportsPath = `${dataPath}/${today}/${localPaths.exports}`;
+    const logsPath = `${dataPath}/${today}/${localPaths.logs}`;
 
     // help text
     const helpText = `\n Available commands:\n\n\

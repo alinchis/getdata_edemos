@@ -222,328 +222,377 @@ async function getItemList(element, marker) {
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// get current index params
+function getCurrentIndexParams(indexList, i, tablesPath, logsPath) {
+    const currentIndexName = indexList[i][4];
+    const currentIndexList = indexList.filter(item => item[0] === indexList[i][0]);
+
+    // return current index parameters
+    return {
+        url: indexList[i][2],
+        id: indexList[i][3],
+        name: currentIndexName,
+        filePath: `${tablesPath}/${currentIndexName.replace('/', '-')}.csv`,
+        downloadingMarkerPath: `${logsPath}/_downloading_${currentIndexName}`,
+        doneMarkerPath: `${logsPath}/_done_${currentIndexName}`,
+        logPath: `${logsPath}/${currentIndexName.replace('/', '-')}.csv`,
+        list: indexList.filter(item => item[0] === indexList[i][0]),
+        index: currentIndexList.map(item => item[4]).indexOf(currentIndexName),
+        yearStart: Number(indexList[i][5]),
+        yearEnd: Number(indexList[i][6]),
+        yearsCount: Number(indexList[i][11]),
+        yearsStep: Number(indexList[i][13]),
+        uatStep: Number(indexList[i][14]),
+    };
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// get current index last log loop parameters
+function getLoopParams(currentIndex) {
+    // init current index loop parameters
+    let logArray = [];
+    let lastLog = {
+        y: currentIndex.yearStart,
+        k1: 0,
+        k2: 0,
+        j: 0,
+        k4: 0,
+        countyName: '',
+        uat: '',
+    };
+
+    // read log file for current index download parameters
+    if (fs.existsSync(currentIndex.logPath)) {
+        console.log('log file found, reading data ...\n');
+        logArray = readCSV(currentIndex.logPath).slice(1);
+
+        // check for empty log
+        if (logArray.length > 0) {
+            // print to screen the last item
+            console.log(logArray[logArray.length - 1]);
+
+            // update current index loop parameters, last line of log array
+            lastLog = {
+                y: Number(logArray[logArray.length - 1][2]),
+                k1: Number(logArray[logArray.length - 1][3]),
+                k2: Number(logArray[logArray.length - 1][4]),
+                j: Number(logArray[logArray.length - 1][5]),
+                // if last message was 'OK' skip to next uat, else retry last log uat
+                k4: logArray[logArray.length - 1][9] === 'OK' ? Number(logArray[logArray.length - 1][7] + 1) : Number(logArray[logArray.length - 1][7]),
+                countyName: logArray[logArray.length - 1][6],
+                uat: logArray[logArray.length - 1][8],
+            };
+        } else {
+            console.log('Log is empty.\n');
+        }
+
+        // else, create log file
+    } else {
+        console.log('log file not found, creating ...\n');
+        fs.writeFileSync(currentIndex.logPath, `${['i', 'currentIndexId', 'y', 'k1', 'k2', 'j', 'countyName', 'k4', 'uatName', 'message'].join(',')}\n`);
+    }
+
+    // return loop params
+    return lastLog;
+}
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get primary table data
 async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tablesPath) {
-    console.log(`\ngetPrimaryTableData: START\n`);
+    console.log(`\n@getPrimaryTableData: START\n`);
     console.log(`received [ ${indexList.length} ] items for index list`);
 
     // for each item in index list
     for (let i = 0; i < indexList.length; i += 1) {
         // assemble current index path
         const indexI = `i[${i + 1}/${indexList.length}]`;
+        console.log('\n//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////');
+        console.log(`// index = ${i}/${indexList.length} //////////////////////////////////////////////////////////////////////////////////////////////`);
         console.log(`\n${indexI} :: ${indexList[i][0]}\n`);
 
         // get index variables
-        const currentIndexUrl = indexList[i][2];
-        const currentIndexId = indexList[i][3];
-        const currentIndexName = indexList[i][4];
-        const currentIndexFilePath = `${tablesPath}/${currentIndexName.replace('/', '-')}.csv`;
-        const currentIndexMarkerPath = `${logsPath}/_downloading_${currentIndexName}`;
-        const currentIndexDonePath = `${logsPath}/_done_${currentIndexName}`;
-        const currentIndexLogPath = `${logsPath}/${currentIndexName.replace('/', '-')}.csv`;
-        const currentIndexList = indexList.filter(item => item[0] === indexList[i][0]);
-        const currentIndexIndex = currentIndexList.map(item => item[4]).indexOf(currentIndexName);
-        const currentIndexYearStart = Number(indexList[i][5]);
-        const currentIndexYearEnd = Number(indexList[i][6]);
-        const currentIndexYearsCount = Number(indexList[i][11]);
-        const currentIndexYearsStep = Number(indexList[i][13]);
-        const currentIndexUatStep = Number(indexList[i][14]);
-
+        const currentIndex = getCurrentIndexParams(indexList, i, tablesPath, logsPath);
 
         // if download or done marker for current index file already exists, skip to the next
-        console.log(`current index marker file path: '${currentIndexMarkerPath}'`);
-        if (fs.existsSync(currentIndexMarkerPath) || fs.existsSync(currentIndexDonePath)) {
+        console.log(`current index marker file path: '${currentIndex.downloadingMarkerPath}'`);
+        if (fs.existsSync(currentIndex.downloadingMarkerPath) || fs.existsSync(currentIndex.doneMarkerPath)) {
             console.log('marker file present, skipping current index ...\n');
             continue;
-            // else, create marker file to signal dowloading
+
+            // else
         } else {
             console.log('marker file is not present, creating ...\n');
-            fs.writeFileSync(currentIndexMarkerPath, 'marker\n');
-        }
+            // create marker file to signal dowloading
+            fs.writeFileSync(currentIndex.downloadingMarkerPath, 'marker\n');
 
-        let logArray = [];
-        let lastLog = {
-            y: currentIndexYearStart,
-            k1: 0,
-            k2: 0,
-            j: 0,
-            k4: 0,
-        };
-        // read log file for current index download parameters
-        if (fs.existsSync(currentIndexLogPath)) {
-            console.log('log file found, reading data ...\n');
-            logArray = readCSV(currentIndexLogPath).slice(1);
+            // init loop params, get it from last log (if available)
+            const lastLog = getLoopParams(currentIndex);
+            console.log(`loop params = ${JSON.stringify(lastLog)}\n`);
 
-            // check for empty log
-            if (logArray.length > 0) {
-                // print to screen the last item
-                console.log(logArray[logArray.length - 1]);
-                // load current index parameters, last line of log array
-                lastLog = {
-                    y: Number(logArray[logArray.length - 1][2]),
-                    k1: Number(logArray[logArray.length - 1][2]),
-                    k2: Number(logArray[logArray.length - 1][3]),
-                    j: Number(logArray[logArray.length - 1][4]),
-                    // if last message was 'OK' skip to next uat, else retry last log uat
-                    k4: logArray[logArray.length - 1][8] === 'OK' ? Number(logArray[logArray.length - 1][6] + 1) : Number(logArray[logArray.length - 1][6]),
-                };
-            } else {
-                console.log('Log is empty.\n');
-            }
+            // for each county, open new browser instance and closes on end of county
+            for (let j = lastLog.j; j < 42; j += 1) {
+                console.log(`\n// county = ${j}/42 /////////////////////////////////////////////////////////////////////////////////////////////////////`);
 
-            // else, create log file
-        } else {
-            console.log('log file not found, creating ...\n');
-            fs.writeFileSync(currentIndexLogPath, `${['i', 'currentIndexId', 'y', 'k1', 'k2', 'j', 'countyName', 'k4', 'uatName', 'message'].join(',')}\n`);
-        }
+                try {
 
+                    // launch browser
+                    const browser = await chrome.launch({
+                        headless: true,
+                    });
+                    const page = await browser.newPage();
+                    // load page in browser
+                    // console.log(`${currentIndex.url}\n`);
+                    await page.goto(currentIndex.url);
+                    // select second tab, no pictures only table
+                    // await page.click('div.tabBGN2L a.tabLink2L');
 
-        // for each county, open new browser instance and closes on end of county
-        for (let j = lastLog.j; j < 42; j += 1) {
+                    // for each year of available data, for current index
+                    for (let y = lastLog.y; y <= currentIndex.yearEnd; y += currentIndex.yearsStep) {
+                        const indexY = `${indexI} ${currentIndex.id} y[${y}-${y + currentIndex.yearsStep - 1}/${currentIndex.yearStart}-${currentIndex.yearEnd}]`;
 
-            try {
+                        // select years from input: '1. An referinta'
+                        const yearStartIndex = lastYear - y; // year index is reversed (year 2020 > #0, year 1990 > #30)
+                        const yearLastIndex = (yearStartIndex - currentIndex.yearsStep) > 0 ? (yearStartIndex - currentIndex.yearsStep) : -1;
+                        // await mcCBSelectItem(page, '_paramsP_AN_REF', y, currentIndex.yearsStep, lastLog.y + currentIndex.yearsCount);
+                        // select all items from input
+                        await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
+                        for (let i = yearStartIndex; i > yearLastIndex; i -= 1) {
+                            await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_${i} label input`);
+                        }
+                        // click to register input selection
+                        await page.click(`label[for=_paramsP_AN_REF]`);
 
-                // launch browser
-                const browser = await chrome.launch({
-                    headless: true,
-                });
-                const page = await browser.newPage();
-                // load page in browser
-                // console.log(`${currentIndexUrl}\n`);
-                await page.goto(currentIndexUrl);
-                // select second tab, no pictures only table
-                // await page.click('div.tabBGN2L a.tabLink2L');
-
-                // for each year of available data, for current index
-                for (let y = lastLog.y; y <= currentIndexYearEnd; y += currentIndexYearsStep) {
-                    const indexY = `${indexI} ${currentIndexId} y[${y}-${y + currentIndexYearsStep - 1}/${currentIndexYearStart}-${currentIndexYearEnd}]`;
-
-                    // select years from input: '1. An referinta'
-                    const yearStartIndex = lastYear - y; // year index is reversed (year 2020 > #0, year 1990 > #30)
-                    const yearLastIndex = (yearStartIndex - currentIndexYearsStep) > 0 ? (yearStartIndex - currentIndexYearsStep) : -1;
-                    // await mcCBSelectItem(page, '_paramsP_AN_REF', y, currentIndexYearsStep, lastLog.y + currentIndexYearsCount);
-                    // select all items from input
-                    await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
-                    for (let i = yearStartIndex; i > yearLastIndex; i -= 1) {
-                        await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_${i} label input`);
-                    }
-                    // click to register input selection
-                    await page.click(`label[for=_paramsP_AN_REF]`);
-
-                    // get list of current indexes from input: '2. Indicatori'
-                    // const currentItemIndex = ( await getItemList(page, '_paramsP_INDIC')).indexOf(currentIndexName);
-                    // select current index item by name
-                    const currentIndex = await mcSelectItem(page, '_paramsP_INDIC', currentIndexIndex);
-                    console.log(`${currentIndex}\n`);
-
-                    
-                    // get dezagregare_1 list of items from input: '3. Dezagregare 1'
-                    const dez1List = await getItemList(page, '_paramsP_DEZAGREGARE1');
+                        // get list of current indexes from input: '2. Indicatori'
+                        // const currentItemIndex = ( await getItemList(page, '_paramsP_INDIC')).indexOf(currentIndexName);
+                        // select current index item by name
+                        const currentIndexI = await mcSelectItem(page, '_paramsP_INDIC', currentIndex.index);
+                        console.log(`j[${j + 1}/42] :: ${currentIndexI}\n`);
 
 
-                    // for each item in dezagregare 1 list
-                    for (let k1 = lastLog.k1; k1 < dez1List.length; k1 += 1) {
-                        // assemble current index path
-                        const indexK1 = `${indexY} k1[${k1 + 1}/${dez1List.length}]`;
-                        console.log(`\n${indexK1}\n`);
-
-                        // select dezagregare_1 item
-                        const currentDezagregare1 = await mcSelectItem(page, '_paramsP_DEZAGREGARE1', k1);
-                        console.log(`${currentDezagregare1}\n`);
-
-                        // get dezagregare_2 list of items from input: '4. Dezagregare 2'
-                        const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
+                        // get dezagregare_1 list of items from input: '3. Dezagregare 1'
+                        const dez1List = await getItemList(page, '_paramsP_DEZAGREGARE1');
 
 
-                        // for each item in dezagregare_2 list
-                        for (let k2 = lastLog.k2; k2 < dez2List.length; k2 += 1) {
+                        // for each item in dezagregare 1 list
+                        for (let k1 = lastLog.k1; k1 < dez1List.length; k1 += 1) {
                             // assemble current index path
-                            const indexK2 = `${indexK1} k1[${k2 + 1}/${dez2List.length}]`;
-                            console.log(`\n${indexK2}\n`);
+                            const indexK1 = `${indexY} k1[${k1 + 1}/${dez1List.length}]`;
+                            console.log(`\n${indexK1}\n`);
 
-                            // select dezagregare_2 item
-                            const currentDezagregare2 = await mcSelectItem(page, '_paramsP_DEZAGREGARE2', k2);
-                            console.log(`${currentDezagregare2}\n`);
+                            // select dezagregare_1 item
+                            const currentDezagregare1 = await mcSelectItem(page, '_paramsP_DEZAGREGARE1', k1);
+                            console.log(`${currentDezagregare1}\n`);
+
+                            // get dezagregare_2 list of items from input: '4. Dezagregare 2'
+                            const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
 
 
-                            // assemble current index path
-                            const indexK3 = `${indexK2} j[${j + 1}/42]`;
-                            // console.log(`\n${indexK3}\n`);
-
-                            // select county
-                            // await mcCBSelectItem(page, '_paramsP_JUD', j);
-                            await page.click('div#xdo\\:_paramsP_JUD_div');
-                            // uncheck checkbox 'all'
-                            await page.uncheck('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
-                            // check current selection checkbox
-                            await page.check(`input#xdo\\:xdo\\:_paramsP_JUD_div_cb_${j}`);
-                            const county = await page.$(`li#xdo\\:xdo\\:_paramsP_JUD_div_li_${j}`);
-                            const countyValueItem = await county.$('input');
-                            const countyId = await countyValueItem.getAttribute('value');
-                            const countyName = await county.innerText();
-                            console.log(`\n${indexK3} >>> [ ${countyId}, ${countyName} ]\n`);
-                            // click to register county selection
-                            await page.click('label[for=_paramsP_JUD]');
-
-                            // get uat list
-                            const uatList = await getItemList(page, '_paramsP_MOC');
-
-                            // for each item in uat list
-                            for (let k4 = lastLog.k4; k4 < uatList.length; k4 += currentIndexUatStep) {
+                            // for each item in dezagregare_2 list
+                            for (let k2 = lastLog.k2; k2 < dez2List.length; k2 += 1) {
                                 // assemble current index path
-                                const indexK4 = `${indexK3} k4[${k4 + 1}/${uatList.length}]`;
-                                // console.log(`\n${indexK4}\n`);
+                                const indexK2 = `${indexK1} k2[${k2 + 1}/${dez2List.length}]`;
+                                console.log(`\n${indexK2}\n`);
 
-                                // select all items from input: '5. Criteriu 1'
-                                await mcCBSelectItem(page, '_paramsP_CRITERIU1', 'all');
-                                // select all items from input: '6. Criteriu 2'
-                                await mcCBSelectItem(page, '_paramsP_CRITERIU2', 'all');
+                                // select dezagregare_2 item
+                                const currentDezagregare2 = await mcSelectItem(page, '_paramsP_DEZAGREGARE2', k2);
+                                console.log(`${currentDezagregare2}\n`);
 
-                                // prepare arrays
-                                const uats = [];
 
-                                // select uat
-                                await page.waitForSelector('div#xdo\\:_paramsP_MOC_div')
-                                await page.click('div#xdo\\:_paramsP_MOC_div');
-                                for (let s = 0; s < currentIndexUatStep; s += 1) {
-                                    const newK4 = k4 + s;
-                                    if (newK4 < uatList.length) {
-                                        // get element for processing
-                                        const uat = await page.$(`li#xdo\\:xdo\\:_paramsP_MOC_div_li_${newK4}`);
-                                        const uatValueItem = await uat.$('input');
-                                        const uatId = await uatValueItem.getAttribute('value'); // SIRUTA code
-                                        const uatName = await uat.innerText();
-                                        uats.push([uatId, uatName]);
-                                        // check item in list
-                                        await page.check(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
-                                    };
-                                }
+                                // assemble current index path
+                                const indexK3 = `${indexK2} j[${j + 1}/42]`;
+                                // console.log(`\n${indexK3}\n`);
 
-                                console.log(`${indexK4} >>> [ ${countyId}, ${countyName} ] > ${uats}`);
-                                // click to register uat selection
-                                // await uat.click();
-                                await page.click('label[for=_paramsP_MACROREG]');
+                                // select county
+                                // await mcCBSelectItem(page, '_paramsP_JUD', j);
+                                await page.click('div#xdo\\:_paramsP_JUD_div');
+                                // uncheck checkbox 'all'
+                                await page.uncheck('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
+                                // check current selection checkbox
+                                await page.check(`input#xdo\\:xdo\\:_paramsP_JUD_div_cb_${j}`);
+                                const county = await page.$(`li#xdo\\:xdo\\:_paramsP_JUD_div_li_${j}`);
+                                const countyValueItem = await county.$('input');
+                                const countyId = await countyValueItem.getAttribute('value');
+                                const countyName = await county.innerText();
+                                console.log(`\n${indexK3} >>> [ ${countyId}, ${countyName} ]\n`);
+                                // click to register county selection
+                                await page.click('label[for=_paramsP_JUD]');
 
-                                // // save current table to file
-                                // click Apply button to load table on page
-                                await page.click('button[title="Apply"]');
-                                sleep(3);
+                                // get uat list
+                                const uatList = await getItemList(page, '_paramsP_MOC');
 
-                                try {
-                                    // get html table from frame
-                                    const tableFrame = page.frame('xdo:docframe0');
+                                // for each item in uat list
+                                for (let k4 = lastLog.k4; k4 < uatList.length; k4 += currentIndex.uatStep) {
+                                    // assemble current index path
+                                    const indexK4 = `${indexK3} k4[${k4 + 1}/${uatList.length}]`;
+                                    // console.log(`\n${indexK4}\n`);
 
-                                    // test for data
-                                    await tableFrame.waitForSelector('g g g text');
-                                    const textTags = await tableFrame.$$('g g g text');
-                                    console.log(`text array: ${textTags.length} items\n`);
+                                    // select all items from input: '5. Criteriu 1'
+                                    await mcCBSelectItem(page, '_paramsP_CRITERIU1', 'all');
+                                    // select all items from input: '6. Criteriu 2'
+                                    await mcCBSelectItem(page, '_paramsP_CRITERIU2', 'all');
 
-                                    // if array of text has only one element, there is no data, continue to next uat
-                                    if (textTags.length === 1) {
-                                        console.log('NO DATA was returned, continue to next query ...\n');
+                                    // prepare arrays
+                                    const uats = [];
+
+                                    // select uat
+                                    await page.waitForSelector('div#xdo\\:_paramsP_MOC_div')
+                                    await page.click('div#xdo\\:_paramsP_MOC_div');
+                                    for (let s = 0; s < currentIndex.uatStep; s += 1) {
+                                        const newK4 = k4 + s;
+                                        if (newK4 < uatList.length) {
+                                            // get element for processing
+                                            const uat = await page.$(`li#xdo\\:xdo\\:_paramsP_MOC_div_li_${newK4}`);
+                                            const uatValueItem = await uat.$('input');
+                                            const uatId = await uatValueItem.getAttribute('value'); // SIRUTA code
+                                            const uatName = await uat.innerText();
+                                            uats.push([uatId, uatName]);
+                                            // check item in list
+                                            await page.check(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
+                                        };
+                                    }
+
+                                    console.log(`${indexK4} >>> [ ${countyId}, ${countyName} ] > [ ${uats.join('; ')} ]`);
+                                    // click to register uat selection
+                                    // await uat.click();
+                                    await page.click('label[for=_paramsP_MACROREG]');
+
+                                    // // save current table to file
+                                    // click Apply button to load table on page
+                                    await page.click('button[title="Apply"]');
+                                    sleep(3);
+
+                                    try {
+                                        // get html table from frame
+                                        const tableFrame = page.frame('xdo:docframe0');
+
+                                        // test for data
+                                        await tableFrame.waitForSelector('g g g text');
+                                        const textTags = await tableFrame.$$('g g g text');
+                                        console.log(`\t> text array: ${textTags.length} items\n`);
+
+                                        // if array of text has only one element, there is no data, continue to next uat
+                                        if (textTags.length === 1) {
+                                            console.log('\t> NO DATA was returned, continue to next query ...\n');
+                                            // save log
+                                            fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA']}\n`);
+                                            // reset uat selector, set back to none
+                                            page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
+                                            await page.click('div#xdo\\:_paramsP_MOC_div');
+                                            for (let s = 0; s < currentIndex.uatStep; s += 1) {
+                                                const newK4 = k4 + s;
+                                                if (newK4 < uatList.length) await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
+                                            }
+                                            await page.click('label[for=_paramsP_MACROREG]');
+
+                                            // continue, skip to next query
+                                            continue;
+                                        }
+
+                                        // get table item
+                                        await tableFrame.waitForSelector('div.tableContainer');
+                                        const tableItem = await tableFrame.$('div.tableContainer');
+                                        // console.log(tableItem);
+
+                                        // test if item exists
+                                        if (tableItem) {
+                                            console.log('\t> ELEMENT "div.tableContainer" FOUND, processing ...');
+
+                                            // get html from table item
+                                            const tableHtml = await tableItem.innerHTML();
+                                            // console.log(tableHtml);
+
+                                            // convert html table to json
+                                            const converted = tabletojson.convert(tableHtml);
+                                            console.log(`\t>> Returned table rows = ${converted[1].length}\n`);
+
+                                            // if first uat for current index:
+                                            if (k1 === 0 && k2 === 0 && j === 0 && k4 === 0 && y === lastLog.y) {
+                                                console.log('NEW table, creating file ...\n');
+
+                                                // create header row
+                                                const headerRow = [
+                                                    converted[0][0]['0'], // 'AN'
+                                                    converted[0][0]['2'], // 'MACROREGIUNE'
+                                                    converted[0][0]['4'], // 'REGIUNE'
+                                                    converted[0][0]['6'], // 'JUDET'
+                                                    'SIRUTA',
+                                                    converted[0][0]['8'], // 'LOCALITATE'
+                                                    converted[0][0]['9'], // 'EV. LOC'
+                                                    converted[0][0]['10'], // 'DEZAGREGARE1'
+                                                    converted[0][0]['12'], // 'CRITERIU 1'
+                                                    converted[0][0]['13'], // 'DEZAGREGARE2'
+                                                    converted[0][0]['15'], // 'CRITERIU 2'
+                                                    converted[0][0]['16'], // 'VALOARE'
+                                                    converted[0][0]['17'], // 'UM'
+                                                    converted[0][0]['18'], // 'TIP VALOARE'
+                                                ];
+
+                                                // create file for index
+                                                fs.writeFileSync(currentIndex.filePath, `${headerRow.join('#')}\n`);
+
+                                            }
+
+                                            // push each item into new array
+                                            converted[1].forEach((row) => {
+                                                // create new row element
+                                                const rowUat = uats.filter(item => item[1] === row['8'])[0];
+                                                const newRow = [
+                                                    row['0'], // 'AN'
+                                                    row['2'], // 'MACROREGIUNE'
+                                                    row['4'], // 'REGIUNE'
+                                                    row['6'], // 'JUDET'
+                                                    rowUat[0], // 'SIRUTA'
+                                                    row['8'], // 'LOCALITATE'
+                                                    row['9'], // 'EV. LOC'
+                                                    row['10'], // 'DEZAGREGARE1'
+                                                    row['12'], // 'CRITERIU 1'
+                                                    row['13'], // 'DEZAGREGARE2'
+                                                    row['15'], // 'CRITERIU 2'
+                                                    row['16'], // 'VALOARE'
+                                                    row['17'], // 'UM'
+                                                    row['18'], // 'TIP VALOARE'
+                                                ];
+
+                                                // append row to file
+                                                // create file for index
+                                                fs.appendFileSync(currentIndex.filePath, `${newRow.join('#')}\n`);
+
+                                            });
+
+                                            // save log
+                                            fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], 'OK'].join(',')}\n`);
+
+                                        } else {
+                                            // save log
+                                            fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA'].join(',')}\n`);
+                                        }
+
+                                    } catch (e) {
+                                        console.log(`\t> ERROR getting tabel from frame: ${e.message}\n`);
                                         // save log
-                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA']}\n`);
+                                        fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], e.message.split('\n')[0]].join(',')}\n`);
+
                                         // reset uat selector, set back to none
                                         page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
                                         await page.click('div#xdo\\:_paramsP_MOC_div');
-                                        for (let s = 0; s < currentIndexUatStep; s += 1) {
+                                        for (let s = 0; s < currentIndex.uatStep; s += 1) {
                                             const newK4 = k4 + s;
                                             if (newK4 < uatList.length) await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
                                         }
                                         await page.click('label[for=_paramsP_MACROREG]');
 
-                                        // continue, skip to next query
+                                        // wait a second
+                                        await sleep(1);
+
                                         continue;
+
                                     }
 
-                                    // get table item
-                                    await tableFrame.waitForSelector('div.tableContainer');
-                                    const tableItem = await tableFrame.$('div.tableContainer');
-                                    // console.log(tableItem);
-
-                                    // test if item exists
-                                    if (tableItem) {
-                                        console.log('ELEMENT "div.tableContainer" FOUND, processing ...\n');
-
-                                        // get html from table item
-                                        const tableHtml = await tableItem.innerHTML();
-                                        // console.log(tableHtml);
-
-                                        // convert html table to json
-                                        const converted = tabletojson.convert(tableHtml);
-                                        console.log(`Returned table rows = ${converted[1].length}\n`);
-
-                                        // if first uat for current index:
-                                        if (k1 === 0 && k2 === 0 && j === 0 && k4 === 0) {
-                                            console.log('NEW table, creating file ...\n');
-
-                                            // create header row
-                                            const headerRow = [
-                                                converted[0][0]['0'], // 'AN'
-                                                converted[0][0]['2'], // 'MACROREGIUNE'
-                                                converted[0][0]['4'], // 'REGIUNE'
-                                                converted[0][0]['6'], // 'JUDET'
-                                                'SIRUTA',
-                                                converted[0][0]['8'], // 'LOCALITATE'
-                                                converted[0][0]['9'], // 'EV. LOC'
-                                                converted[0][0]['10'], // 'DEZAGREGARE1'
-                                                converted[0][0]['12'], // 'CRITERIU 1'
-                                                converted[0][0]['13'], // 'DEZAGREGARE2'
-                                                converted[0][0]['15'], // 'CRITERIU 2'
-                                                converted[0][0]['16'], // 'VALOARE'
-                                                converted[0][0]['17'], // 'UM'
-                                                converted[0][0]['18'], // 'TIP VALOARE'
-                                            ];
-
-                                            // create file for index
-                                            fs.writeFileSync(currentIndexFilePath, `${headerRow.join('#')}\n`);
-
-                                        }
-
-                                        // push each item into new array
-                                        converted[1].forEach((row) => {
-                                            // create new row element
-                                            const rowUat = uats.filter(item => item[1] === row['8'])[0];
-                                            const newRow = [
-                                                row['0'], // 'AN'
-                                                row['2'], // 'MACROREGIUNE'
-                                                row['4'], // 'REGIUNE'
-                                                row['6'], // 'JUDET'
-                                                rowUat[0],// 'SIRUTA'
-                                                row['8'], // 'LOCALITATE'
-                                                row['9'], // 'EV. LOC'
-                                                row['10'], // 'DEZAGREGARE1'
-                                                row['12'], // 'CRITERIU 1'
-                                                row['13'], // 'DEZAGREGARE2'
-                                                row['15'], // 'CRITERIU 2'
-                                                row['16'], // 'VALOARE'
-                                                row['17'], // 'UM'
-                                                row['18'], // 'TIP VALOARE'
-                                            ];
-
-                                            // append row to file
-                                            // create file for index
-                                            fs.appendFileSync(currentIndexFilePath, `${newRow.join('#')}\n`);
-
-                                        });
-
-                                        // save log
-                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uats[0][1], 'OK'].join(',')}\n`);
-
-                                    } else {
-                                        // save log
-                                        fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA'].join(',')}\n`);
-                                    }
-
-                                } catch (e) {
-                                    console.log(`ERROR getting tabel from frame: ${e.message}\n`);
-                                    // save log
-                                    fs.appendFileSync(currentIndexLogPath, `${[i, currentIndexId, y, k1, k2, j, countyName, k4, uats[0][1], e.message.split('\n')[0]].join(',')}\n`);
 
                                     // reset uat selector, set back to none
-                                    page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
                                     await page.click('div#xdo\\:_paramsP_MOC_div');
-                                    for (let s = 0; s < currentIndexUatStep; s += 1) {
+                                    for (let s = 0; s < currentIndex.uatStep; s += 1) {
                                         const newK4 = k4 + s;
                                         if (newK4 < uatList.length) await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
                                     }
@@ -551,66 +600,54 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
 
                                     // wait a second
                                     await sleep(1);
-
-                                    continue;
-
                                 }
 
+                                // click to close county selection
+                                // await page.click('label[for=_paramsP_MACROREG]');
+                                // sleep(1);
 
-                                // reset uat selector, set back to none
-                                await page.click('div#xdo\\:_paramsP_MOC_div');
-                                for (let s = 0; s < currentIndexUatStep; s += 1) {
-                                    const newK4 = k4 + s;
-                                    if (newK4 < uatList.length) await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
-                                }
-                                await page.click('label[for=_paramsP_MACROREG]');
+                                // reset county selector, set back to all
+                                await page.click('div#xdo\\:_paramsP_JUD_div');
+                                await page.click('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
+                                await page.click('div#xdo\\:_paramsP_JUD_div');
 
-                                // wait a second
-                                await sleep(1);
+
                             }
-
-                            // click to close county selection
-                            // await page.click('label[for=_paramsP_MACROREG]');
-                            // sleep(1);
-
-                            // reset county selector, set back to all
-                            await page.click('div#xdo\\:_paramsP_JUD_div');
-                            await page.click('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
-                            await page.click('div#xdo\\:_paramsP_JUD_div');
-
-
                         }
+
+                        // reset year selection
+                        await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
+                        // select all
+                        await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_all label input`);
+                        // deselect all
+                        await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_all label input`);
+                        // register selection
+                        await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
                     }
 
-                    // reset year selection
-                    await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
-                    // select all
-                    await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_all label input`);
-                    // deselect all
-                    await page.click(`li#xdo\\:xdo\\:_paramsP_AN_REF_div_li_all label input`);
-                    // register selection
-                    await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
+
+                    // close browser
+                    await browser.close();
+
+                } catch (e) {
+                    console.log(e.message);
+
+                    // update log file
+                    fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, lastLog.y, lastLog.k1, lastLog.k2, j, lastLog.countyName, lastLog.k4, lastLog.uat, e.message.split('\n')[0]].join(',')}\n`);
                 }
-
-
-                // close browser
-                await browser.close();
-
-
-            } catch (e) {
-                console.log(e);
             }
 
+            // mark file as done
+            console.log('index table download DONE!\n');
+            fs.writeFileSync(currentIndex.doneMarkerPath, 'done\n');
+
+            // remove current index download marker file
+            if (fs.existsSync(currentIndex.downloadingMarkerPath)) fs.unlinkSync(currentIndex.downloadingMarkerPath);
         }
 
-        // mark file as done
-        console.log('index table download DONE!\n');
-        fs.writeFileSync(currentIndexDonePath, 'done\n');
-
-        // remove current index download marker file
-        if (fs.existsSync(currentIndexMarkerPath)) fs.unlinkSync(currentIndexMarkerPath);
-
     }
+
+    console.log(`\n@getPrimaryTableData: END\n`);
 }
 
 
