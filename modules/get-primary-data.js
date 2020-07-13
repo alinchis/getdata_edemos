@@ -314,10 +314,20 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, logsPath, tab
         // get index variables
         const currentIndex = getCurrentIndexParams(indexList, i, tablesPath, logsPath);
 
-        // if download or done marker for current index file already exists, skip to the next
+        // if 'download' marker for current index file already exists, skip to the next index
         console.log(`current index marker file path: '${currentIndex.downloadingMarkerPath}'`);
-        if (fs.existsSync(currentIndex.downloadingMarkerPath) || fs.existsSync(currentIndex.doneMarkerPath)) {
-            console.log('marker file present, skipping current index ...\n');
+        if (fs.existsSync(currentIndex.downloadingMarkerPath)) {
+            console.log('\'downloading\' marker file present, skipping current index ...\n');
+            continue;
+
+            // else if 'done' marker file is present, check logs for missing data
+        } else if (fs.existsSync(currentIndex.doneMarkerPath)) {
+            console.log('\'done\' marker file present, checking logs ...\n');
+
+            // check logs for missing data
+            let redoArr = checkLogs(currentIndex);
+            // if no missing data, continue
+            
             continue;
 
             // else
