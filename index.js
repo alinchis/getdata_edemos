@@ -111,6 +111,7 @@ async function main() {
             manualIndexesListFilePath,
             manualIndexesListUrl,
             indexesFilePath.replace('today', today),
+            metadataPath,
             logsPath,
             primaryIndexListPath.replace('today', today),
             tablesPath
