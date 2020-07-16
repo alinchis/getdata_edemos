@@ -8,6 +8,7 @@ const createFolder = require('./modules/create-folder');
 const getIndexList = require('./modules/get-index-list');
 const getPrimaryData = require('./modules/get-primary-data');
 const getPerformanceData = require('./modules/get-performance-data');
+const exportToXlsx = require('./modules/export-to-xlsx');
 
 // constants
 const eDemosFirstYear = 1990;
@@ -62,7 +63,8 @@ async function main() {
   1. -h  : display help text\n\
   2. -d  : download index list\n\
   3. -d1 : download primary data\n\
-  4. -d2 : download performance data\n`;
+  4. -d2 : download performance data\n\
+  5. -e [date] : export tables to xlsx, date is necessary ex: '2020-03-01'\n`;
 
     // get command line arguments
     const arguments = process.argv;
@@ -73,7 +75,7 @@ async function main() {
     // get third command line argument
     // if argument is missing, -h is set by default
     const mainArg = process.argv[2] || '-h';
-    // const secondaryArg = process.argv[3] || '';
+    const secondaryArg = process.argv[3] || '';
     // manual select list of counties for download, leave active only the ones you want to download
 
 
@@ -135,6 +137,23 @@ async function main() {
             tablesPath
         );
 
+
+        // 5. else if argument is 'e'
+    } else if (mainArg === '-e') {
+
+        // stage 3: get uat performance DATA
+        console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
+        console.log('STAGE 3: Export data to XLSX files\n');
+
+        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
+        const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
+
+        if (fs.existsSync(tablesPath) && fs.existsSync(exportsPath)) {
+            console.log('PATHS found...');
+            exportToXlsx(tablesPath, exportsPath);
+        } else {
+            console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
+        }
 
 
 

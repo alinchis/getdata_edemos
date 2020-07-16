@@ -240,55 +240,6 @@ function getCurrentIndexParams(indexList, i, metadataPath, tablesPath, logsPath)
     };
 }
 
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// get current index last log loop parameters
-function getLoopParams(currentIndex) {
-    // init current index loop parameters
-    let logArray = [];
-    let lastLog = {
-        y: currentIndex.yearStart,
-        k1: 0,
-        k2: 0,
-        j: 0,
-        k4: 0,
-        countyName: '',
-        uat: '',
-    };
-
-    // read log file for current index download parameters
-    if (fs.existsSync(currentIndex.logPath)) {
-        console.log('log file found, reading data ...\n');
-        logArray = readCSV(currentIndex.logPath).slice(1);
-
-        // check for empty log
-        if (logArray.length > 0) {
-            // print to screen the last item
-            console.log(logArray[logArray.length - 1]);
-
-            // update current index loop parameters, last line of log array
-            lastLog = {
-                y: Number(logArray[logArray.length - 1][2]),
-                k1: Number(logArray[logArray.length - 1][3]),
-                k2: Number(logArray[logArray.length - 1][4]),
-                j: Number(logArray[logArray.length - 1][5]),
-                // if last message was 'OK' skip to next uat, else retry last log uat
-                k4: logArray[logArray.length - 1][9] === 'OK' ? Number(logArray[logArray.length - 1][7] + 1) : Number(logArray[logArray.length - 1][7]),
-                countyName: logArray[logArray.length - 1][6],
-                uat: logArray[logArray.length - 1][8],
-            };
-        } else {
-            console.log('Log is empty.\n');
-        }
-
-        // else, create log file
-    } else {
-        console.log('log file not found, creating ...\n');
-        fs.writeFileSync(currentIndex.logPath, `${['i', 'currentIndexId', 'y', 'k1', 'k2', 'j', 'countyName', 'k4', 'uatName', 'message'].join(',')}\n`);
-    }
-
-    // return loop params
-    return lastLog;
-}
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // calculate permutations array for given index
@@ -500,7 +451,6 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
                         // select years from input: '1. An referinta'
                         const yearStartIndex = lastYear - y; // year index is reversed (year 2020 > #0, year 1990 > #30)
                         const yearLastIndex = (yearStartIndex - currentIndex.yearsStep) > 0 ? (yearStartIndex - currentIndex.yearsStep) : -1;
-                        // await mcCBSelectItem(page, '_paramsP_AN_REF', y, currentIndex.yearsStep, lastLog.y + currentIndex.yearsCount);
                         // select all items from input
                         await page.click(`div#xdo\\:_paramsP_AN_REF_div`);
                         for (let ii = yearStartIndex; ii > yearLastIndex; ii -= 1) {
@@ -527,7 +477,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
 
                         // select dezagregare_1 item
                         const currentDezagregare1 = await mcSelectItem(page, '_paramsP_DEZAGREGARE1', k1);
-                        console.log(`${currentDezagregare1}\n`);
+                        console.log(`\t>dezagregare1 = ${currentDezagregare1}\n`);
 
                         // get dezagregare_2 list of items from input: '4. Dezagregare 2'
                         const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
@@ -540,7 +490,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
 
                         // select dezagregare_2 item
                         const currentDezagregare2 = await mcSelectItem(page, '_paramsP_DEZAGREGARE2', k2);
-                        console.log(`${currentDezagregare2}\n`);
+                        console.log(`\t>dezagregare2 = ${currentDezagregare2}\n`);
 
 
                         // assemble current index path
