@@ -367,10 +367,16 @@ function checkLogs(permArr, currentIndex) {
             totalPerm += returnArr[i].length;
         }
         console.log(`\n\tTOTAL permutations left: ${totalPerm}.`);
-        return returnArr;
+        return [returnArr, totalPerm];
 
     } else {
-        return permArr;
+        // calculate total permutation
+        let totalPerm = 0;
+        for (let i = 0; i < 42; i += 1) {
+            console.log(`\tcounty ${i}: ${permArr[i].length} permutations left.`);
+            totalPerm += permArr[i].length;
+        }
+        return [permArr, totalPerm];
     }
 }
 
@@ -382,6 +388,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
 
     // for each item in index list
     for (let i = 0; i < indexList.length; i += 1) {
+
         // assemble current index path
         const indexI = `i[${i + 1}/${indexList.length}]`;
         console.log('\n//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////');
@@ -408,7 +415,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
             const permutations = await calculatePermutations(indexList, currentIndex);
 
             // check logs for missing data
-            let loopArray = checkLogs(permutations, currentIndex);
+            let [loopArray, totalPermutations] = checkLogs(permutations, currentIndex);
 
             // init current params, for error log
             let ey = 0;
@@ -416,6 +423,8 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
             let ek2 = 0;
             let ek4 = 0;
 
+            // init permutations counter
+            let currentPermutation = 0;
 
             // for each county in array of permutations /loop array
             for (let j = 0; j < 42; j += 1) {
@@ -438,13 +447,19 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
 
                     // for each permutation in county
                     for (let p = 0; p < loopArray[j].length; p += 1) {
+                        // increase current permutation index
+                        currentPermutation += 1;
+                        const permPercent = (currentPermutation/totalPermutations) * 100;
+                        const permIndex = `${currentPermutation}/${totalPermutations} [ ${permPercent.toFixed(2)} % ]`;
+                        // console.log(`${permIndex}   ////////////////////////////////////////////////////////////////////////////////////////////////`);
+
                         // load parameters for current loop
                         const [y, k1, k2, k4] = loopArray[j][p];
                         ey = y;
                         ek1 = k1;
                         ek2 = k2;
                         ek4 = k4;
-                        console.log(`y= ${y}, k1= ${k1}, k2= ${k2}, k4= ${k4}\n`);
+                        console.log(`${permIndex} >>>>>> [ y = ${y}, k1 = ${k1}, k2 = ${k2}, k4 = ${k4} ] \n`);
 
                         const indexY = `${indexI} ${currentIndex.id} y[${y}-${y + currentIndex.yearsStep - 1}/${currentIndex.yearStart}-${currentIndex.yearEnd}]`;
 
@@ -463,7 +478,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
                         // const currentItemIndex = ( await getItemList(page, '_paramsP_INDIC')).indexOf(currentIndexName);
                         // select current index item by name
                         const currentIndexI = await mcSelectItem(page, '_paramsP_INDIC', currentIndex.index);
-                        console.log(`j[${j + 1}/42] :: ${currentIndexI}\n`);
+                        console.log(`\t> Current Index = ${currentIndexI}\n`);
 
 
                         // get dezagregare_1 list of items from input: '3. Dezagregare 1'
@@ -473,11 +488,11 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
                         // for each item in dezagregare 1 list
                         // assemble current index path
                         const indexK1 = `${indexY} k1[${k1 + 1}/${dez1List.length}]`;
-                        console.log(`\n${indexK1}\n`);
+                        console.log(`\n${indexK1}`);
 
                         // select dezagregare_1 item
                         const currentDezagregare1 = await mcSelectItem(page, '_paramsP_DEZAGREGARE1', k1);
-                        console.log(`\t>dezagregare1 = ${currentDezagregare1}\n`);
+                        console.log(`\t> dezagregare1 = ${currentDezagregare1}\n`);
 
                         // get dezagregare_2 list of items from input: '4. Dezagregare 2'
                         const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
@@ -486,11 +501,11 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
                         // for each item in dezagregare_2 list
                         // assemble current index path
                         const indexK2 = `${indexK1} k2[${k2 + 1}/${dez2List.length}]`;
-                        console.log(`\n${indexK2}\n`);
+                        console.log(`\n${indexK2}`);
 
                         // select dezagregare_2 item
                         const currentDezagregare2 = await mcSelectItem(page, '_paramsP_DEZAGREGARE2', k2);
-                        console.log(`\t>dezagregare2 = ${currentDezagregare2}\n`);
+                        console.log(`\t> dezagregare2 = ${currentDezagregare2}\n`);
 
 
                         // assemble current index path
@@ -507,7 +522,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
                         const countyValueItem = await county.$('input');
                         const countyId = await countyValueItem.getAttribute('value');
                         const countyName = await county.innerText();
-                        console.log(`\n${indexK3} >>> [ ${countyId}, ${countyName} ]\n`);
+                        console.log(`\n${permIndex} >>>>>> ${indexK3} >>> [ ${countyId}, ${countyName} ]\n`);
                         // click to register county selection
                         await page.click('label[for=_paramsP_MACROREG]');
 
@@ -544,7 +559,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
                             }
                         }
 
-                        console.log(`${indexK4} >>> [ ${countyId}, ${countyName} ] > [ ${uats.join('; ')} ]`);
+                        console.log(`${indexK4} >>> [ ${countyId}, ${countyName} ]\n\tUAT(s): [ ${uats.join('; ')} ]`);
                         // click to register uat selection
                         // await uat.click();
                         await page.click('label[for=_paramsP_MACROREG]');

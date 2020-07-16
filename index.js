@@ -53,18 +53,18 @@ async function main() {
     const today = getCurrentDate();
     console.log(`@index:main >>> current date = ${today}`);
     // create folder paths variables
-    const metadataPath = `${dataPath}/${today}/${localPaths.metadata}`;
-    const tablesPath = `${dataPath}/${today}/${localPaths.tables}`;
-    const exportsPath = `${dataPath}/${today}/${localPaths.exports}`;
-    const logsPath = `${dataPath}/${today}/${localPaths.logs}`;
+    let metadataPath = `${dataPath}/${today}/${localPaths.metadata}`;
+    let tablesPath = `${dataPath}/${today}/${localPaths.tables}`;
+    let exportsPath = `${dataPath}/${today}/${localPaths.exports}`;
+    let logsPath = `${dataPath}/${today}/${localPaths.logs}`;
 
     // help text
     const helpText = `\n Available commands:\n\n\
   1. -h  : display help text\n\
   2. -d  : download index list\n\
-  3. -d1 : download primary data\n\
-  4. -d2 : download performance data\n\
-  5. -e [date] : export tables to xlsx, date is necessary ex: '2020-03-01'\n`;
+  3. -d1 [date] : download primary data. if date parameter is omitted, current date is applied\n\
+  4. -d2 [date] : download performance data. if date parameter is omitted, current date is applied\n\
+  5. -e  [date] : export tables to xlsx, date is necessary ex: '2020-03-01'\n`;
 
     // get command line arguments
     const arguments = process.argv;
@@ -106,19 +106,33 @@ async function main() {
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download primary data\n');
 
-        getPrimaryData(
-            today,
-            eDemosFirstYear,
-            eDemosLastYear,
-            manualIndexesListFilePath,
-            manualIndexesListUrl,
-            indexesFilePath.replace('today', today),
-            metadataPath,
-            logsPath,
-            primaryIndexListPath.replace('today', today),
-            tablesPath
-        );
-
+        if(secondaryArg !== '' && fs.existsSync(`${dataPath}/${secondaryArg}/${localPaths.exports}`)) {
+            getPrimaryData(
+                secondaryArg,
+                eDemosFirstYear,
+                eDemosLastYear,
+                manualIndexesListFilePath,
+                manualIndexesListUrl,
+                indexesFilePath.replace('today', secondaryArg),
+                `${dataPath}/${secondaryArg}/${localPaths.metadata}`,
+                `${dataPath}/${secondaryArg}/${localPaths.logs}`,
+                primaryIndexListPath.replace('today', secondaryArg),
+                `${dataPath}/${secondaryArg}/${localPaths.tables}`
+            );
+        } else {
+            getPrimaryData(
+                today,
+                eDemosFirstYear,
+                eDemosLastYear,
+                manualIndexesListFilePath,
+                manualIndexesListUrl,
+                indexesFilePath.replace('today', today),
+                metadataPath,
+                logsPath,
+                primaryIndexListPath.replace('today', today),
+                tablesPath
+            );
+        }
 
 
         // 4. else if argument is 'd2'
@@ -128,14 +142,26 @@ async function main() {
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download performance data\n');
 
-        getPerformanceData(
-            today,
-            indexesFilePath.replace('today', today),
-            saveUatPath.replace('today', today),
-            logsPath,
-            performanceIndexListPath.replace('today', today),
-            tablesPath
-        );
+        if(secondaryArg !== '' && fs.existsSync(`${dataPath}/${secondaryArg}/${localPaths.exports}`)) {
+            getPerformanceData(
+                secondaryArg,
+                indexesFilePath.replace('today', secondaryArg),
+                saveUatPath.replace('today', secondaryArg),
+                `${dataPath}/${secondaryArg}/${localPaths.logs}`,
+                performanceIndexListPath.replace('today', secondaryArg),
+                `${dataPath}/${secondaryArg}/${localPaths.tables}`
+            );
+        } else {
+            getPerformanceData(
+                today,
+                indexesFilePath.replace('today', today),
+                saveUatPath.replace('today', today),
+                logsPath,
+                performanceIndexListPath.replace('today', today),
+                tablesPath
+            );
+        }
+
 
 
         // 5. else if argument is 'e'

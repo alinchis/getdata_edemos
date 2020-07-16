@@ -40,23 +40,29 @@ function exportToXlsx(index, tableIndex, totalItems, filePath, delimiter, saveFi
         // read csv file
         const tableData = readCSV(filePath, delimiter);
 
-        // prepare out XLSX data
-        console.log('\t@exportToXlsx: XLSX prepare workbook');
-        // create new workbook
-        const wb = XLSX.utils.book_new();
-        // create new worksheet
-        const wsName = 'data';
-        // convert table data
-        const wsData = XLSX.utils.aoa_to_sheet(tableData);
+        // if table has too many rows, don't try exporting
+        if (tableData.length > 1000000) {
+            console.log(`ERROR: File has too many rows ${tableData.length}. Limit is 1,000,000!\n`);
 
-        // write sheet to workbook
-        console.log(`\t@exportToXlsx: XLSX append sheet: ${wsName}`);
-        XLSX.utils.book_append_sheet(wb, wsData, wsName);
+        } else {
+            // prepare out XLSX data
+            console.log('\t@exportToXlsx: XLSX prepare workbook');
+            // create new workbook
+            const wb = XLSX.utils.book_new();
+            // create new worksheet
+            const wsName = 'data';
+            // convert table data
+            const wsData = XLSX.utils.aoa_to_sheet(tableData);
 
-        // save XLSX file
-        console.log('\t@exportToXlsx: XLSX file write starting...');
-        XLSX.writeFile(wb, saveFilePath);
-        console.log('\t@exportToXlsx: XLSX file write done!');
+            // write sheet to workbook
+            console.log(`\t@exportToXlsx: XLSX append sheet: ${wsName}`);
+            XLSX.utils.book_append_sheet(wb, wsData, wsName);
+
+            // save XLSX file
+            console.log('\t@exportToXlsx: XLSX file write starting...');
+            XLSX.writeFile(wb, saveFilePath);
+            console.log('\t@exportToXlsx: XLSX file write done!');
+        }
 
     } else {
         // else show error message
