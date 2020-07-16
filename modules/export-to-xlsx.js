@@ -42,7 +42,7 @@ function exportToXlsx(index, tableIndex, totalItems, filePath, delimiter, saveFi
 
         // if table has too many rows, don't try exporting
         if (tableData.length > 1000000) {
-            console.log(`ERROR: File has too many rows ${tableData.length}. Limit is 1,000,000!\n`);
+            console.log(`ERROR: File has too many rows ${tableData.length}. Limit is around 1,000,000!\n`);
 
         } else {
             // prepare out XLSX data

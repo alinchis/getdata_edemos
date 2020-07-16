@@ -8,6 +8,7 @@ const createFolder = require('./modules/create-folder');
 const getIndexList = require('./modules/get-index-list');
 const getPrimaryData = require('./modules/get-primary-data');
 const getPerformanceData = require('./modules/get-performance-data');
+const cleanCsv = require('./modules/clean-csv');
 const exportToXlsx = require('./modules/export-to-xlsx');
 
 // constants
@@ -64,7 +65,8 @@ async function main() {
   2. -d  : download index list\n\
   3. -d1 [date] : download primary data. if date parameter is omitted, current date is applied\n\
   4. -d2 [date] : download performance data. if date parameter is omitted, current date is applied\n\
-  5. -e  [date] : export tables to xlsx, date is necessary ex: '2020-03-01'\n`;
+  5. -c  [date] : remove repeating rows in CSV files, date is necessary. ex: '2020-03-01'\\n\`;
+  6. -e  [date] : export tables to xlsx, date is necessary. ex: '2020-03-01'\n`;
 
     // get command line arguments
     const arguments = process.argv;
@@ -145,8 +147,12 @@ async function main() {
         if(secondaryArg !== '' && fs.existsSync(`${dataPath}/${secondaryArg}/${localPaths.exports}`)) {
             getPerformanceData(
                 secondaryArg,
+                eDemosFirstYear,
+                eDemosLastYear,
+                manualIndexesListFilePath,
+                manualIndexesListUrl,
                 indexesFilePath.replace('today', secondaryArg),
-                saveUatPath.replace('today', secondaryArg),
+                `${dataPath}/${secondaryArg}/${localPaths.metadata}`,
                 `${dataPath}/${secondaryArg}/${localPaths.logs}`,
                 performanceIndexListPath.replace('today', secondaryArg),
                 `${dataPath}/${secondaryArg}/${localPaths.tables}`
@@ -154,8 +160,12 @@ async function main() {
         } else {
             getPerformanceData(
                 today,
+                eDemosFirstYear,
+                eDemosLastYear,
+                manualIndexesListFilePath,
+                manualIndexesListUrl,
                 indexesFilePath.replace('today', today),
-                saveUatPath.replace('today', today),
+                metadataPath,
                 logsPath,
                 performanceIndexListPath.replace('today', today),
                 tablesPath
@@ -164,12 +174,30 @@ async function main() {
 
 
 
-        // 5. else if argument is 'e'
+        // 5. else if argument is 'c'
+    } else if (mainArg === '-c') {
+
+        // stage 3: get uat performance DATA
+        console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
+        console.log('STAGE 3: check and clean CSV files for repeating values\n');
+
+        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
+        const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
+
+        if (fs.existsSync(tablesPath) && fs.existsSync(exportsPath)) {
+            console.log('PATHS found...');
+            cleanCsv(tablesPath, `${dataPath}/${secondaryArg}/${localPaths.logs}`);
+        } else {
+            console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
+        }
+
+
+        // 6. else if argument is 'e'
     } else if (mainArg === '-e') {
 
         // stage 3: get uat performance DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
-        console.log('STAGE 3: Export data to XLSX files\n');
+        console.log('STAGE 4: Export data to XLSX files\n');
 
         const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
         const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
