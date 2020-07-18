@@ -22,19 +22,22 @@ function readCsvLine(filePath) {
 
 // /////////////////////////////////////////////////////////////////////
 // clean current table file
-function checkCleanCsv(index, tableIndex, totalItems, filePath, tempFilePath, markerFilePath) {
+function checkCleanCsv(index, tableIndex, totalItems, filePath, tempFilePath, downloadingFilePath) {
     const printIndex = `${index}/${totalItems} [ ${tableIndex} ]`;
     console.log(`\n${printIndex} >>> @cleanCSV: START...`);
 
     // if file is found in path
-    if (fs.existsSync(filePath) && !fs.existsSync(markerFilePath)) {
+    if (fs.existsSync(filePath) && !fs.existsSync(downloadingFilePath)) {
         // read csv file
         console.log('\t> read array from CSV file');
         const rowsArray = readCsvLine(filePath);
+        console.log(`\t>> array has ${rowsArray.length}`);
 
         // create new array
         console.log('\t> create new array...');
         const newArray = rowsArray.filter((row, index) => {
+            const indexPercent = index * 100 / rowsArray.length;
+            console.log(`\t\t>>> ${indexPercent.toFixed(2)} % :: [ ${index}/${rowsArray.length} ]`);
             return rowsArray.indexOf(row) == index;
         });
 
@@ -67,16 +70,20 @@ module.exports = (inPath, logsPath) => {
 
     fileArray.forEach((fileName, index) => {
         const tableIndex = fileName.split(' ')[0];
-        console.log(`\n${index}/${fileArray.length} >>> ${fileName}`);
+        console.log(`\n${index + 1}/${fileArray.length} >>> ${fileName}`);
         const filePath = `${inPath}/${fileName}`;
         console.log(`\t> ${filePath}`);
         const tempFilePath = `${inPath}/tempfile_${index}.csv`;
         console.log(`\t> ${tempFilePath}`);
-        const markerFilePath = `${logsPath}/_downloading_${fileName.replace('.csv', '')}`;
-        console.log(`\t> ${markerFilePath}`);
+        const downloadingFilePath = `${logsPath}/_downloading_${fileName.replace('.csv', '')}`;
+        console.log(`\t> ${downloadingFilePath}`);
+        const cleaningFilePath = `${logsPath}/_cleanining_${fileName.replace('.csv', '')}`;
+        console.log(`\t> ${cleaningFilePath}`);
+        const cleanedFilePath = `${logsPath}/_cleaned_${fileName.replace('.csv', '')}`;
+        console.log(`\t> ${cleanedFilePath}`);
 
         // clean CSV file
-        checkCleanCsv(index + 1, tableIndex, fileArray.length, filePath, tempFilePath, markerFilePath);
+        checkCleanCsv(index + 1, tableIndex, fileArray.length, filePath, tempFilePath, downloadingFilePath);
     });
 
     console.log('\n@cleanCSV:: END\n');

@@ -177,7 +177,7 @@ async function main() {
         // 5. else if argument is 'c'
     } else if (mainArg === '-c') {
 
-        // stage 3: get uat performance DATA
+        // stage 3: verify done tables for double data
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 3: check and clean CSV files for repeating values\n');
 
@@ -195,7 +195,7 @@ async function main() {
         // 6. else if argument is 'e'
     } else if (mainArg === '-e') {
 
-        // stage 3: get uat performance DATA
+        // stage 4: export csv files to xlsx
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 4: Export data to XLSX files\n');
 

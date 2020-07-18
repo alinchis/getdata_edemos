@@ -771,7 +771,7 @@ module.exports = async (today, firstYear, lastYear, manualIndexesListFilePath, m
             console.log(`indexesFilePath: CSV import >>> ${indexesArr.length} items!\n`);
 
             // creat list of domains for primary indexes, 13 selection boxes
-            const primaryIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori primari');
+            const primaryIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori de performanță');
 
             // get list of indexes
             const indexList = !fs.existsSync(saveIndexListPath) ? await getIndexList(manualIndexesList, primaryIndexesArr, saveIndexListPath) : readCSV(saveIndexListPath, '#');
