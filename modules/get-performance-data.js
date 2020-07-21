@@ -72,7 +72,7 @@ async function getIndexList(manualIndexesList, urlTable, saveIndexListPath) {
         for (let i = 0; i < urlTable.length; i += 1) {
             // assemble current index path
             const indexI = `${i + 1}/${urlTable.length}`;
-            console.log(`\n${indexI}\n`);
+            console.log(`\n${indexI}`);
 
             // load page in browser
             await page.goto(urlTable[i][3]);
@@ -93,9 +93,10 @@ async function getIndexList(manualIndexesList, urlTable, saveIndexListPath) {
                 const dez1ListCount = dez1List.length;
 
                 // get list of 'Dezagregare 2' items
-                const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
+                // const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
+                const dez2ListCount =  1;
                 // console.log(`Dezagregare 2: ${dez2List.length} elemente`);
-                const dez2ListCount = dez2List.length;
+                // const dez2ListCount = dez2List.length;
 
                 // get list of 'Criteriu 1' items
                 const crit1List = await getItemList(page, '_paramsP_CRITERIU1');
@@ -103,9 +104,10 @@ async function getIndexList(manualIndexesList, urlTable, saveIndexListPath) {
                 const crit1ListCount = crit1List.length - 2;
 
                 // get list of 'Criteriu 2' items
-                const crit2List = await getItemList(page, '_paramsP_CRITERIU2');
+                // const crit2List = await getItemList(page, '_paramsP_CRITERIU2');
+                const crit2ListCount = 1;
                 // console.log(`Criteriu 2: ${crit2List.length} elemente`);
-                const crit2ListCount = crit2List.length - 2;
+                // const crit2ListCount = crit2List.length - 2;
 
                 // assemble current index path
                 // create file path
@@ -126,8 +128,13 @@ async function getIndexList(manualIndexesList, urlTable, saveIndexListPath) {
                 const yearsCount = Number(currentManualIndex[5]) - Number(currentManualIndex[4]) + 1;
                 // calculate max_years
                 const columnsCount = 13;
-                const maxYears = Math.round(3500 / (columnsCount * dez1ListCount * dez2ListCount * crit1ListCount * crit2ListCount));
-                // calculate years_step
+                let maxYears = Math.round(3500 / (columnsCount * dez1ListCount * dez2ListCount * crit1ListCount * crit2ListCount));
+                console.log(`\t> yearsCount = ${yearsCount}, maxYears = ${maxYears}`);
+                // if maximum number of years for possible download request
+                // is bigger than the available maximum years count available
+                // set maxYears = yearsCount
+                // maxYears = maxYears > yearsCount ? yearsCount : maxYears;
+                // calculate years step
                 const yearsStep = maxYears < yearsCount ? maxYears : yearsCount;
                 // calculate uat_step
                 const uatStep = Math.round(maxYears / yearsStep);
@@ -225,11 +232,11 @@ function getCurrentIndexParams(indexList, i, metadataPath, tablesPath, logsPath)
         url: indexList[i][2],
         id: indexList[i][3],
         name: currentIndexName,
-        filePath: `${tablesPath}/${currentIndexName.trim().replace('/', '-')}.csv`,
-        permutationsPath: `${metadataPath}/_permutations_${currentIndexName.trim().replace('/', '-')}.json`,
-        downloadingMarkerPath: `${logsPath}/_downloading_${currentIndexName.trim().replace('/', '-')}`,
-        doneMarkerPath: `${logsPath}/_done_${currentIndexName.trim().replace('/', '-')}`,
-        logPath: `${logsPath}/${currentIndexName.trim().replace('/', '-')}.csv`,
+        filePath: `${tablesPath}/${currentIndexName.trim().replace(/\//g, '-')}.csv`,
+        permutationsPath: `${metadataPath}/_permutations_${currentIndexName.trim().replace(/\//g, '-')}.json`,
+        downloadingMarkerPath: `${logsPath}/_downloading_${currentIndexName.trim().replace(/\//g, '-')}`,
+        doneMarkerPath: `${logsPath}/_done_${currentIndexName.trim().replace(/\//g, '-')}`,
+        logPath: `${logsPath}/${currentIndexName.trim().replace(/\//g, '-')}.csv`,
         list: indexList.filter(item => item[0] === indexList[i][0]),
         index: currentIndexList.map(item => item[4]).indexOf(currentIndexName),
         yearStart: Number(indexList[i][5]),
@@ -283,22 +290,22 @@ async function calculatePermutations(indexList, currentIndex) {
                 const dez1List = await getItemList(page, '_paramsP_DEZAGREGARE1');
 
                 // get dezagregare_2 list of items from input: '4. Dezagregare 2'
-                const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
+                // const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
 
                 // for each year of available data, for current index
                 for (let y = currentIndex.yearStart; y <= currentIndex.yearEnd; y += currentIndex.yearsStep) {
                     // for each item in dezagregare 1 list
                     for (let k1 = 0; k1 < dez1List.length; k1 += 1) {
                         // for each item in dezagregare_2 list
-                        for (let k2 = 0; k2 < dez2List.length; k2 += 1) {
+                        // for (let k2 = 0; k2 < dez2List.length; k2 += 1) {
                             // for each item in uat list
                             for (let k4 = 0; k4 < uatList.length; k4 += currentIndex.uatStep) {
-                                countyArr.push([y, k1, k2, k4]);
+                                countyArr.push([y, k1, 0, k4]);
                                 // console.log([y, k1, k2, k4]);
                                 // increase county permutation counter
                                 countyPerm += 1;
                             }
-                        }
+                        // }
                     }
                 }
                 // show number of needed permutations
@@ -413,6 +420,7 @@ async function getPrimaryTableData(firstYear, lastYear, indexList, metadataPath,
 
             // calculate permutations
             const permutations = await calculatePermutations(indexList, currentIndex);
+            continue;
 
             // check logs for missing data
             let [loopArray, totalPermutations] = checkLogs(permutations, currentIndex);
@@ -771,10 +779,10 @@ module.exports = async (today, firstYear, lastYear, manualIndexesListFilePath, m
             console.log(`indexesFilePath: CSV import >>> ${indexesArr.length} items!\n`);
 
             // creat list of domains for primary indexes, 13 selection boxes
-            const primaryIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori primari');
+            const performanceIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori de performanță');
 
             // get list of indexes
-            const indexList = !fs.existsSync(saveIndexListPath) ? await getIndexList(manualIndexesList, primaryIndexesArr, saveIndexListPath) : readCSV(saveIndexListPath, '#');
+            const indexList = !fs.existsSync(saveIndexListPath) ? await getIndexList(manualIndexesList, performanceIndexesArr, saveIndexListPath) : readCSV(saveIndexListPath, '#');
             console.log(`Found ${indexList.length - 1} TOTAL primary indexes\n`);
 
             // get data for primary indexes

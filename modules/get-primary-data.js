@@ -225,11 +225,11 @@ function getCurrentIndexParams(indexList, i, metadataPath, tablesPath, logsPath)
         url: indexList[i][2],
         id: indexList[i][3],
         name: currentIndexName,
-        filePath: `${tablesPath}/${currentIndexName.trim().replace('/', '-')}.csv`,
-        permutationsPath: `${metadataPath}/_permutations_${currentIndexName.trim().replace('/', '-')}.json`,
-        downloadingMarkerPath: `${logsPath}/_downloading_${currentIndexName.trim().replace('/', '-')}`,
-        doneMarkerPath: `${logsPath}/_done_${currentIndexName.trim().replace('/', '-')}`,
-        logPath: `${logsPath}/${currentIndexName.trim().replace('/', '-')}.csv`,
+        filePath: `${tablesPath}/${currentIndexName.trim().replace(/\//g, '-')}.csv`,
+        permutationsPath: `${metadataPath}/_permutations_${currentIndexName.trim().replace(/\//g, '-')}.json`,
+        downloadingMarkerPath: `${logsPath}/_downloading_${currentIndexName.trim().replace(/\//g, '-')}`,
+        doneMarkerPath: `${logsPath}/_done_${currentIndexName.trim().replace(/\//g, '-')}`,
+        logPath: `${logsPath}/${currentIndexName.trim().replace(/\//g, '-')}.csv`,
         list: indexList.filter(item => item[0] === indexList[i][0]),
         index: currentIndexList.map(item => item[4]).indexOf(currentIndexName),
         yearStart: Number(indexList[i][5]),
@@ -771,7 +771,7 @@ module.exports = async (today, firstYear, lastYear, manualIndexesListFilePath, m
             console.log(`indexesFilePath: CSV import >>> ${indexesArr.length} items!\n`);
 
             // creat list of domains for primary indexes, 13 selection boxes
-            const primaryIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori de performanță');
+            const primaryIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori primari');
 
             // get list of indexes
             const indexList = !fs.existsSync(saveIndexListPath) ? await getIndexList(manualIndexesList, primaryIndexesArr, saveIndexListPath) : readCSV(saveIndexListPath, '#');
