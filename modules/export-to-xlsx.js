@@ -53,7 +53,7 @@ function exportToXlsx(index, tableIndex, totalItems, filePath, delimiter, saveFi
             // create new worksheet
             const wsName = 'data';
             // convert table data
-            console.log('\t> XLSX convert table to sheet');
+            console.log(`\t> XLSX convert table [ ${tableData.length} lines] to sheet`);
             const wsData = XLSX.utils.aoa_to_sheet(tableData);
 
             // write sheet to workbook

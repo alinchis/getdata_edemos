@@ -8,6 +8,7 @@ const createFolder = require('./modules/create-folder');
 const getIndexList = require('./modules/get-index-list');
 const getPrimaryData = require('./modules/get-primary-data');
 const getPerformanceData = require('./modules/get-performance-data');
+const standardizeCsv = require('./modules/convert-to-standard-csv');
 const cleanCsv = require('./modules/clean-csv');
 const exportToXlsx = require('./modules/export-to-xlsx');
 
@@ -20,6 +21,7 @@ const dataPath = './data';
 const localPaths = {
     metadata: 'metadata',
     tables: 'tables',
+    stables: 'stables', // standard tables, CSV with ',' delimiter
     exports: 'exports',
     logs: 'logs',
 };
@@ -56,6 +58,7 @@ async function main() {
     // create folder paths variables
     let metadataPath = `${dataPath}/${today}/${localPaths.metadata}`;
     let tablesPath = `${dataPath}/${today}/${localPaths.tables}`;
+    let sTablesPath = `${dataPath}/${today}/${localPaths.stables}`;
     let exportsPath = `${dataPath}/${today}/${localPaths.exports}`;
     let logsPath = `${dataPath}/${today}/${localPaths.logs}`;
 
@@ -191,13 +194,29 @@ async function main() {
             console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
         }
 
+        // 6. else if argument is 's'
+    } else if (mainArg === '-s') {
 
-        // 6. else if argument is 'e'
+        // stage 3: verify done tables for double data
+        console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
+        console.log('STAGE 4: covert CSV to standard CSV\n');
+
+        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
+        const sTablesPath = `${dataPath}/${secondaryArg}/${localPaths.stables}`;
+
+        if (fs.existsSync(tablesPath) && fs.existsSync(sTablesPath)) {
+            console.log('PATHS found...');
+            standardizeCsv(tablesPath, sTablesPath);
+        } else {
+            console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
+        }
+
+        // 7. else if argument is 'e'
     } else if (mainArg === '-e') {
 
         // stage 4: export csv files to xlsx
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
-        console.log('STAGE 4: Export data to XLSX files\n');
+        console.log('STAGE 5: Export data to XLSX files\n');
 
         const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
         const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;

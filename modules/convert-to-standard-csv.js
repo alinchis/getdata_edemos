@@ -1,0 +1,75 @@
+
+// import libraries
+const fs = require('fs-extra');
+const XLSX = require('xlsx');
+
+// ////////////////////////////////////////////////////////////////////////////////////////////
+// // METHODS
+
+// /////////////////////////////////////////////////////////////////////
+// load csv file
+function readCSV(filePath, delimiter) {
+    // if file is found in path
+    if (fs.existsSync(filePath)) {
+        // break into lines
+        const newArray = fs.readFileSync(filePath, 'utf8').split('\n');
+        // return parsed file
+        return newArray
+            .filter(line => line)
+            .map(line => line
+                    // .split('"')
+                    // .map(item => item.split(delimiter || ',')
+                    //     .filter(item => item !== '')
+                    // )
+                    .split(delimiter || ',')
+                // .filter(item => item !== '')
+            );
+    };
+    // else return empty object
+    console.log('\x1b[31m%s\x1b[0m',`ERROR: ${filePath} file NOT found!`);
+    return [];
+}
+
+// /////////////////////////////////////////////////////////////////////
+// save to standard CSV format
+function exportToCSV(index, totalItems,tableIndex, filePath, delimiter, saveFilePath) {
+    const printIndex = `${index}/${totalItems} [ ${tableIndex} ]`;
+    console.log(`\n${printIndex} >>> @standardizeCSV: START...`);
+    // if file is found in path
+    if (fs.existsSync(filePath)) {
+        // create new file
+        fs.writeFileSync(saveFilePath, '');
+
+        // read csv file
+        const tableData = readCSV(filePath, delimiter);
+
+        // save table to new file
+        tableData.forEach((row, rIndex) => {
+           const saveRow = `"${row.join('","')}"\n`;
+           fs.appendFileSync(saveFilePath, saveRow);
+        });
+
+    } else {
+        // else show error message
+        console.log('\x1b[31m%s\x1b[0m',`${printIndex} >>> ERROR: ${filePath} file NOT found!`);
+    }
+
+    console.log(`${printIndex} >>> @standardizeCSV: END`);
+}
+
+
+// ////////////////////////////////////////////////////////////////////////////////////////////
+// // EXPORTS
+module.exports = (inPath, outPath) => {
+    console.log('\n@standardizeCSV:: START\n');
+    // read input directory
+    const fileArray = fs.readdirSync(inPath);
+    console.log(`TOTAL = ${fileArray.length} files found.`);
+
+    fileArray.forEach((fileName, index) => {
+        const tableIndex = fileName.split(' ')[0];
+        exportToCSV(index + 1, fileArray.length, tableIndex, `${inPath}/${fileName}`, '#', `${outPath}/${fileName}`);
+    });
+
+    console.log('\n@standardizeCSV:: END\n');
+};
