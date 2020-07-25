@@ -3,7 +3,8 @@
 
 // import libraries
 const {
-    chromium: chrome, firefox
+    chromium: chrome,
+    firefox
 } = require('playwright'); // Or 'chromium' or 'webkit'.
 // const axios = require('axios');
 // const cheerio = require('cheerio');
@@ -355,7 +356,7 @@ function checkLogs(permArr, currentIndex) {
     if (fs.existsSync(currentIndex.logPath)) {
         console.log('@checkLogs:: \'done\' marker file present, checking logs ...\n');
         // load file in array
-        const logArr = readCSV(currentIndex.logPath).slice(1);
+        const logArr = readCSV(currentIndex.logPath);
 
         // assemble log data into array of arrays (converted to strings), similar to permutations array
         const returnArr = [];
@@ -456,7 +457,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                 try {
                     // launch browser
                     const browser = await firefox.launch({
-                        headless: false,
+                        headless: true,
 
                     });
                     const page = await browser.newPage();
@@ -649,7 +650,8 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                                 console.log(`\t>> Returned table rows = ${converted[1].length}\n`);
 
                                 // if first uat for current index:
-                                if (k1 === 0 && k2 === 0 && j === 0 && k4 === 0 && y === permutations[j][0][0]) {
+                                // if (k1 === 0 && k2 === 0 && j === 0 && k4 === 0 && y === permutations[j][0][0]) {
+                                if (!fs.existsSync(currentIndex.filePath)) {
                                     console.log('\t>>> NEW table, creating file ...\n');
                                     // console.log(converted);
 
@@ -766,6 +768,8 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                 } catch (e) {
                     console.log(e.message);
+                    // close browser
+                    await browser.close();
 
                     // update log file
                     fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, ey, ek1, ek2, j, '', ek4, '', e.message.split('\n')[0]].join(',')}\n`);
