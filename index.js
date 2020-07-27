@@ -6,10 +6,11 @@ const fs = require('fs-extra');
 // import local modules
 const createFolder = require('./modules/create-folder');
 const getIndexList = require('./modules/get-index-list');
+const splitIndexesList = require('./modules/split-indexes-list');
+const calculatePermutations = require('./modules/permutations');
 const getPrimaryData = require('./modules/get-primary-data');
 const getPerformanceData = require('./modules/get-performance-data');
 const standardizeCsv = require('./modules/convert-to-standard-csv');
-const cleanCsv = require('./modules/clean-csv');
 const exportToXlsx = require('./modules/export-to-xlsx');
 
 // constants
@@ -20,9 +21,11 @@ const eDemosLastYear = 2020;
 const dataPath = './data';
 const localPaths = {
     metadata: 'metadata',
-    tables: 'tables',
+    dowloads: 'downloads', // dowloaded data, one file/permutation
+    permutations: 'permutations',
+    tables: 'tables', // CSV with '#' delimiter
     stables: 'stables', // standard tables, CSV with ',' delimiter
-    exports: 'exports',
+    exports: 'exports', // XLSX files
     logs: 'logs',
 };
 const indexesFilePath = './data/today/metadata/indexesPaths.csv';
@@ -55,21 +58,17 @@ async function main() {
     // get current date
     const today = getCurrentDate();
     console.log(`@index:main >>> current date = ${today}`);
-    // create folder paths variables
-    let metadataPath = `${dataPath}/${today}/${localPaths.metadata}`;
-    let tablesPath = `${dataPath}/${today}/${localPaths.tables}`;
-    let sTablesPath = `${dataPath}/${today}/${localPaths.stables}`;
-    let exportsPath = `${dataPath}/${today}/${localPaths.exports}`;
-    let logsPath = `${dataPath}/${today}/${localPaths.logs}`;
 
     // help text
     const helpText = `\n Available commands:\n\n\
-  1. -h  : display help text\n\
-  2. -d  : download index list\n\
-  3. -d1 [date] : download primary data. if date parameter is omitted, current date is applied\n\
-  4. -d2 [date] : download performance data. if date parameter is omitted, current date is applied\n\
-  5. -c  [date] : remove repeating rows in CSV files, date is necessary. ex: '2020-03-01'\\n\`;
-  6. -e  [date] : export tables to xlsx, date is necessary. ex: '2020-03-01'\n`;
+  1. -h         : display help text\n\
+  2. -d         : download index list\n\
+  3. -p         : create permutations files\n\
+  4. -d1 [date] : download primary data. if date parameter is omitted, current date is applied\n\
+  5. -d2 [date] : download performance data. if date parameter is omitted, current date is applied\n\
+  6. -c  [date] : combine dowloaded data into CSV files, date is necessary. ex: '2020-03-01'\\n\`;
+  7. -s  [date] : save data to standard CSV (',' delimiter), date is necessary. ex: '2020-03-01'\\n\`;
+  8. -e  [date] : export tables to xlsx, date is necessary. ex: '2020-03-01'\n`;
 
     // get command line arguments
     const arguments = process.argv;
@@ -80,38 +79,85 @@ async function main() {
     // get third command line argument
     // if argument is missing, -h is set by default
     const mainArg = process.argv[2] || '-h';
-    const secondaryArg = process.argv[3] || '';
-    // manual select list of counties for download, leave active only the ones you want to download
+    const secondaryArg = process.argv[3] || today;
 
+    // create folder paths variables
+    let metadataPath = `${dataPath}/${secondaryArg}/${localPaths.metadata}`;
+    let permutationsPath = `${dataPath}/${secondaryArg}/${localPaths.permutations}`;
+    let downloadsPath = `${dataPath}/${secondaryArg}/${localPaths.dowloads}`;
+    let tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
+    let sTablesPath = `${dataPath}/${secondaryArg}/${localPaths.stables}`;
+    let exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
+    let logsPath = `${dataPath}/${secondaryArg}/${localPaths.logs}`;
 
     // run requested command
     // 1. if argument is 'h' or 'help' print available commands
     if (mainArg === '-h') {
         console.log(helpText);
 
+
         // 2. else if argument is 'd'
     } else if (mainArg === '-d') {
 
         // prepare folders // folders are not written over
         createFolder(1, metadataPath);
-        createFolder(2, tablesPath);
-        createFolder(3, exportsPath);
-        createFolder(4, logsPath);
+        createFolder(2, permutationsPath);
+        createFolder(2, `${permutationsPath}/primary`);
+        createFolder(2, `${permutationsPath}/performance`);
+        createFolder(3, downloadsPath);
+        createFolder(3, `${downloadsPath}/primary`);
+        createFolder(3, `${downloadsPath}/performance`);
+        createFolder(4, tablesPath);
+        createFolder(4, `${tablesPath}/primary`);
+        createFolder(4, `${tablesPath}/performance`);
+        createFolder(5, sTablesPath);
+        createFolder(5, `${sTablesPath}/primary`);
+        createFolder(5, `${sTablesPath}/performance`);
+        createFolder(6, exportsPath);
+        createFolder(6, `${exportsPath}/primary`);
+        createFolder(6, `${exportsPath}/performance`);
+        createFolder(7, logsPath);
+        createFolder(7, `${logsPath}/primary`);
+        createFolder(7, `${logsPath}/performance`);
 
         // stage 1: get counties info
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 1: get indexes list\n');
-        getIndexList(today, indexesFilePath.replace('today', today));
+        await getIndexList(indexesFilePath.replace('today', today));
+
+        // prepare indexes lists
+        await splitIndexesList(
+            manualIndexesListFilePath,
+            indexesFilePath.replace('today', today),
+            `${dataPath}/${today}/${localPaths.metadata}`
+        );
 
 
-        // 3. else if argument is 'd1'
+        // 3. else if argument is 'p'
+    } else if (mainArg === '-p') {
+
+        // stage 2: calculate permutations
+        console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
+        console.log('STAGE 2: calculate download permutations\n');
+
+        if (fs.existsSync(metadataPath) && fs.existsSync(permutationsPath)) {
+            calculatePermutations(
+                metadataPath,
+                permutationsPath
+            );
+        } else {
+            console.log(`ERROR: PATH '${metadataPath}' or '${permutationsPath}' not found!`)
+        }
+
+
+        // 4. else if argument is 'd1'
     } else if (mainArg === '-d1') {
 
-        // stage 3: get uat primany DATA
+        // stage 4: get uat primany DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download primary data\n');
 
-        if(secondaryArg !== '' && fs.existsSync(`${dataPath}/${secondaryArg}/${localPaths.exports}`)) {
+        if (secondaryArg !== '' && fs.existsSync(`${dataPath}/${secondaryArg}/${localPaths.exports}`)) {
             getPrimaryData(
                 secondaryArg,
                 eDemosFirstYear,
@@ -122,7 +168,7 @@ async function main() {
                 `${dataPath}/${secondaryArg}/${localPaths.metadata}`,
                 `${dataPath}/${secondaryArg}/${localPaths.logs}`,
                 primaryIndexListPath.replace('today', secondaryArg),
-                `${dataPath}/${secondaryArg}/${localPaths.tables}`
+                `${dataPath}/${secondaryArg}/${localPaths.downloads}`
             );
         } else {
             getPrimaryData(
@@ -135,69 +181,53 @@ async function main() {
                 metadataPath,
                 logsPath,
                 primaryIndexListPath.replace('today', today),
-                tablesPath
+                downloadsPath
             );
         }
 
 
-        // 4. else if argument is 'd2'
+        // 5. else if argument is 'd2'
     } else if (mainArg === '-d2') {
 
-        // stage 3: get uat performance DATA
+        // stage 5: get uat performance DATA
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download performance data\n');
 
-        if(secondaryArg !== '' && fs.existsSync(`${dataPath}/${secondaryArg}/${localPaths.exports}`)) {
+        if (fs.existsSync(`${dataPath}/${secondaryArg}`)) {
             getPerformanceData(
-                secondaryArg,
                 eDemosFirstYear,
                 eDemosLastYear,
-                manualIndexesListFilePath,
-                manualIndexesListUrl,
-                indexesFilePath.replace('today', secondaryArg),
+                performanceIndexListPath.replace('today', secondaryArg),
                 `${dataPath}/${secondaryArg}/${localPaths.metadata}`,
                 `${dataPath}/${secondaryArg}/${localPaths.logs}`,
-                performanceIndexListPath.replace('today', secondaryArg),
-                `${dataPath}/${secondaryArg}/${localPaths.tables}`
-            );
-        } else {
-            getPerformanceData(
-                today,
-                eDemosFirstYear,
-                eDemosLastYear,
-                manualIndexesListFilePath,
-                manualIndexesListUrl,
-                indexesFilePath.replace('today', today),
-                metadataPath,
-                logsPath,
-                performanceIndexListPath.replace('today', today),
-                tablesPath
+                `${dataPath}/${secondaryArg}/${localPaths.downloads}`
             );
         }
 
 
 
-        // 5. else if argument is 'c'
+        // 6. else if argument is 'c'
     } else if (mainArg === '-c') {
 
-        // stage 3: verify done tables for double data
+        // stage 6: verify done tables for double data
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
-        console.log('STAGE 3: check and clean CSV files for repeating values\n');
+        console.log('STAGE 3: combine dowloaded data into csv files\n');
 
-        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
-        const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
+        // const downloadsPath = `${dataPath}/${secondaryArg}/${localPaths.downloads}`;
+        // const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
+        // const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
 
-        if (fs.existsSync(tablesPath) && fs.existsSync(exportsPath)) {
-            console.log('PATHS found...');
-            cleanCsv(tablesPath, `${dataPath}/${secondaryArg}/${localPaths.logs}`);
-        } else {
-            console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
-        }
+        // if (fs.existsSync(tablesPath) && fs.existsSync(exportsPath)) {
+        //     console.log('PATHS found...');
+        //     cleanCsv(tablesPath, `${dataPath}/${secondaryArg}/${localPaths.logs}`);
+        // } else {
+        //     console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
+        // }
 
-        // 6. else if argument is 's'
+        // 7. else if argument is 's'
     } else if (mainArg === '-s') {
 
-        // stage 3: verify done tables for double data
+        // stage 7: verify done tables for double data
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 4: covert CSV to standard CSV\n');
 
@@ -211,10 +241,10 @@ async function main() {
             console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
         }
 
-        // 7. else if argument is 'e'
+        // 8. else if argument is 'e'
     } else if (mainArg === '-e') {
 
-        // stage 4: export csv files to xlsx
+        // stage 8: export csv files to xlsx
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 5: Export data to XLSX files\n');
 

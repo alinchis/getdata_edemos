@@ -2,6 +2,8 @@
 'use strict';
 
 // import libraries
+const createFolder = require('./modules/create-folder');
+const readCSV = require('./read-csv');
 const {
     chromium: chrome,
     firefox
@@ -16,167 +18,6 @@ const {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // METHODS
-
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// load csv file
-function readCSV(filePath, colDelimiter = ',', strDelimiter = '') {
-    // if file is found in path
-    if (fs.existsSync(filePath)) {
-        // return parsed file
-        const newArray = fs.readFileSync(filePath, 'utf8').split('\n');
-        return newArray.filter(line => line).map(line => {
-            if (strDelimiter !== '') {
-                // if final column is missing, add empty value
-                const newLine = line[line.length - 1] === colDelimiter ? `${line}""` : line;
-                return newLine
-                    .split(`${strDelimiter}${colDelimiter}${strDelimiter}`)
-                    .map((item) => {
-                        let newItem = item.replace(/\s+/g, ' ');
-                        if (item[0] === strDelimiter) {
-                            newItem = newItem.slice(1);
-                        } else if (item[item.length - 1] === strDelimiter) {
-                            newItem = newItem.slice(0, -1);
-                        }
-                        // return new item
-                        return newItem;
-                    })
-            } else {
-                return line.split(colDelimiter);
-            }
-        });
-    }
-    // else return empty object
-    console.log('\x1b[31m%s\x1b[0m', `ERROR: ${filePath} file NOT found!`);
-    return [];
-}
-
-
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// get list of indexes
-async function getIndexList(manualIndexesList, urlTable, saveIndexListPath) {
-    console.log(`\ngetIndexList: START`);
-
-    // start write file
-    const listHeader = ['domeniu', 'tip_indicator', 'url', 'indicator_cod', 'indicator_nume', 'an_prim', 'an_ultim', 'dezagregare1', 'dezagregare2', 'criteriu1', 'criteriu2', 'years_count', 'max_years', 'years_step', 'uat_step'];
-    fs.writeFileSync(saveIndexListPath, `${listHeader.join('#')}\n`);
-
-    try {
-        // launch browser
-        const browser = await chrome.launch({
-            headless: false
-        });
-        const page = await browser.newPage();
-
-        const returnArray = [];
-
-        // for each item in url list
-        for (let i = 0; i < urlTable.length; i += 1) {
-            // assemble current index path
-            const indexI = `${i + 1}/${urlTable.length}`;
-            console.log(`\n${indexI}`);
-
-            // load page in browser
-            await page.goto(urlTable[i][3]);
-
-            // get list of current indexes from input: '2. Indicatori'
-            const indexList = await getItemList(page, '_paramsP_INDIC');
-
-            //for each indicator
-            for (let j = 0; j < indexList.length; j += 1) {
-
-                // select indicator item
-                const currentIndex = await mcSelectItem(page, '_paramsP_INDIC', j);
-                const indexId = currentIndex.split(' ')[0];
-
-                // get list of 'Dezagregare 1' items
-                const dez1List = await getItemList(page, '_paramsP_DEZAGREGARE1');
-                // console.log(`Dezagregare 1: ${dez1List.length} elemente`);
-                const dez1ListCount = dez1List.length;
-
-                // get list of 'Dezagregare 2' items
-                // const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
-                const dez2ListCount = 1;
-                // console.log(`Dezagregare 2: ${dez2List.length} elemente`);
-                // const dez2ListCount = dez2List.length;
-
-                // get list of 'Criteriu 1' items
-                const crit1List = await getItemList(page, '_paramsP_CRITERIU1');
-                // console.log(`Criteriu 1: ${crit1List.length} elemente`);
-                const crit1ListCount = crit1List.length - 2;
-
-                // get list of 'Criteriu 2' items
-                // const crit2List = await getItemList(page, '_paramsP_CRITERIU2');
-                const crit2ListCount = 1;
-                // console.log(`Criteriu 2: ${crit2List.length} elemente`);
-                // const crit2ListCount = crit2List.length - 2;
-
-                // assemble current index path
-                // create file path
-                const indexJ = `${indexI} ${j + 1}/${indexList.length} [ ${indexId} ] `;
-                console.log(`${indexJ} >>> ${currentIndex}\n`);
-
-                // get year data from manual indexes list
-                const currentManualIndex = manualIndexesList.filter((item) => {
-                    const itemName = `${item[2]} - ${item[3]}`;
-                    // console.log(itemName);
-                    // console.log(`${currentIndex}\n`);
-
-                    return itemName.replace(/\s{2,}/g, ' ').toLowerCase() === currentIndex.replace(/\s{2,}/g, ' ').toLowerCase()
-                })[0];
-
-                // calculate permutations data
-                // calculate years_count
-                const yearsCount = Number(currentManualIndex[5]) - Number(currentManualIndex[4]) + 1;
-                // calculate max_years
-                const columnsCount = 13;
-                let maxYears = Math.round(3500 / (columnsCount * dez1ListCount * dez2ListCount * crit1ListCount * crit2ListCount));
-                console.log(`\t> yearsCount = ${yearsCount}, maxYears = ${maxYears}`);
-                // if maximum number of years for possible download request
-                // is bigger than the available maximum years count available
-                // set maxYears = yearsCount
-                // maxYears = maxYears > yearsCount ? yearsCount : maxYears;
-                // calculate years step
-                const yearsStep = maxYears < yearsCount ? maxYears : yearsCount;
-                // calculate uat_step
-                const uatStep = Math.round(maxYears / yearsStep);
-
-
-                // push index into return array
-                const currentRow = [
-                    urlTable[i][0],
-                    urlTable[i][1],
-                    urlTable[i][3],
-                    indexId,
-                    currentIndex,
-                    currentManualIndex[4],
-                    currentManualIndex[5],
-                    dez1ListCount,
-                    dez2ListCount,
-                    crit1ListCount,
-                    crit2ListCount,
-                    yearsCount,
-                    maxYears,
-                    yearsStep,
-                    uatStep,
-                ];
-                // console.log(currentRow);
-                returnArray.push(currentRow);
-                // write row to file
-                fs.appendFileSync(saveIndexListPath, `${currentRow.join('#')}\n`);
-            }
-        }
-
-        // close browser
-        await browser.close();
-
-        // return new array
-        return returnArray;
-
-    } catch (e) {
-        console.log(e);
-    }
-}
-
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // sleep
@@ -224,16 +65,21 @@ async function getItemList(element, marker) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get current index params
-function getCurrentIndexParams(indexList, i, metadataPath, tablesPath, logsPath) {
+function getCurrentIndexParams(indexList, i, metadataPath, logsPath, downloadsPath) {
     const currentIndexName = indexList[i][4];
     const currentIndexList = indexList.filter(item => item[0] === indexList[i][0]);
+
+    // create current index downloads path
+    const currentDownloadsPath = `${downloadsPath}/${currentIndexName.trim().replace(/\//g, '-')}`;
+    // create downloads folder
+    createFolder(i, currentDownloadsPath);
 
     // return current index parameters
     return {
         url: indexList[i][2],
         id: indexList[i][3],
         name: currentIndexName,
-        filePath: `${tablesPath}/${currentIndexName.trim().replace(/\//g, '-')}.csv`,
+        downloadsPath: currentDownloadsPath,
         permutationsPath: `${metadataPath}/_permutations_${currentIndexName.trim().replace(/\//g, '-')}.json`,
         downloadingMarkerPath: `${logsPath}/_downloading_${currentIndexName.trim().replace(/\//g, '-')}`,
         doneMarkerPath: `${logsPath}/_done_${currentIndexName.trim().replace(/\//g, '-')}`,
@@ -248,106 +94,6 @@ function getCurrentIndexParams(indexList, i, metadataPath, tablesPath, logsPath)
     };
 }
 
-
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// calculate permutations array for given index
-async function calculatePermutations(indexList, currentIndex) {
-    console.log('@calculatePermutations:: START\n');
-    const permArr = [];
-
-    if (fs.existsSync(currentIndex.permutationsPath)) {
-        return JSON.parse(fs.readFileSync(currentIndex.permutationsPath, 'utf8'));
-    } else {
-        try {
-            // launch browser
-            const browser = await firefox.launch({
-                headless: false,
-            });
-            const page = await browser.newPage();
-            // load page in browser
-            await page.goto(currentIndex.url);
-            // select current index
-            const currentIndexI = await mcSelectItem(page, '_paramsP_INDIC', currentIndex.index);
-
-            // for each county
-            for (let j = 0; j < 42; j += 1) {
-                const countyArr = [];
-                let countyPerm = 0;
-
-                // select urban /rural checkboxes
-                await page.click(`div#xdo\\:_paramsP_M_R_div`);
-                await page.check(`li#xdo\\:xdo\\:_paramsP_M_R_div_li_0 label input`);
-                await page.check(`li#xdo\\:xdo\\:_paramsP_M_R_div_li_1 label input`);
-                await page.click(`div#xdo\\:_paramsP_M_R_div`);
-                // click to register input selection
-                await page.click('label[for=_paramsP_MACROREG]');
-                // await sleep(60);
-
-                // select county
-                await page.click('div#xdo\\:_paramsP_JUD_div');
-                // uncheck checkbox 'all'
-                await page.uncheck('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
-                // check current selection checkbox
-                await page.check(`input#xdo\\:xdo\\:_paramsP_JUD_div_cb_${j}`);
-                // click to register county selection
-                await page.click('label[for=_paramsP_MACROREG]');
-
-                // get uat list
-                const uatList = await getItemList(page, '_paramsP_MOC');
-                console.log(`uatList.length: ${uatList.length}`);
-                // click to register uat selection
-                await page.click('label[for=_paramsP_MACROREG]');
-
-                // get dezagregare_1 list of items from input: '3. Dezagregare 1'
-                const dez1List = await getItemList(page, '_paramsP_DEZAGREGARE1');
-
-                // get dezagregare_2 list of items from input: '4. Dezagregare 2'
-                // const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
-
-                // for each year of available data, for current index
-                for (let y = currentIndex.yearStart; y <= currentIndex.yearEnd; y += currentIndex.yearsStep) {
-                    // for each item in dezagregare 1 list
-                    for (let k1 = 0; k1 < dez1List.length; k1 += 1) {
-                        // for each item in dezagregare_2 list
-                        // for (let k2 = 0; k2 < dez2List.length; k2 += 1) {
-                        // for each item in uat list
-                        for (let k4 = 0; k4 < uatList.length; k4 += currentIndex.uatStep) {
-                            countyArr.push([y, k1, 0, k4]);
-                            console.log([y, k1, 0, k4]);
-                            // increase county permutation counter
-                            countyPerm += 1;
-                        }
-                        // }
-                    }
-                }
-                // show number of needed permutations
-                console.log(`\t> county ${j}: ${countyPerm} permutations`);
-
-                // reset county selector, set back to all
-                await page.click('div#xdo\\:_paramsP_JUD_div');
-                await page.click('li#xdo\\:xdo\\:_paramsP_JUD_div_li_all label input');
-                await page.click('div#xdo\\:_paramsP_JUD_div');
-
-                // push county array to permutations array
-                permArr.push(countyArr);
-            }
-
-            // close browser
-            await browser.close();
-
-
-        } catch (e) {
-            console.log('\n@calculatePermutations:: ERROR getting permutations data !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n');
-            throw e;
-        }
-    }
-
-    // save permutations to file
-    fs.writeFileSync(currentIndex.permutationsPath, JSON.stringify(permArr));
-    console.log('\n@calculatePermutations:: PERMUTATIONS file write DONE!');
-    // return permutations array
-    return permArr;
-}
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // check logs for errors in downloads
@@ -400,8 +146,8 @@ function checkLogs(permArr, currentIndex) {
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// get primary table data
-async function getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, logsPath, tablesPath) {
+// get performance table data
+async function getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, logsPath, downloadsPath) {
     console.log(`\n@getPerformanceTableData:: START\n`);
     console.log(`@getPerformanceTableData:: received [ ${indexList.length} ] items for index list`);
 
@@ -409,13 +155,13 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
     for (let i = 0; i < indexList.length; i += 1) {
 
         // assemble current index path
-        const indexI = `i[${i + 1}/${indexList.length}]`;
+        const indexI = `\ti[${i + 1}/${indexList.length}]`;
         console.log('\n//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////');
         console.log(`// index = ${i + 1}/${indexList.length} / ${indexList[i][3]} //////////////////////////////////////////////////////////////////////////////////////////////`);
         console.log(`\n${indexI} :: ${indexList[i][0]}\n`);
 
         // get index variables
-        const currentIndex = getCurrentIndexParams(indexList, i, metadataPath, tablesPath, logsPath);
+        const currentIndex = getCurrentIndexParams(indexList, i, metadataPath, logsPath, downloadsPath);
 
         // if 'download' marker for current index file already exists, skip to the next index
         console.log(`@getPerformanceTableData:: current index marker file path: '${currentIndex.downloadingMarkerPath}'`);
@@ -431,7 +177,12 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
             fs.writeFileSync(currentIndex.downloadingMarkerPath, 'marker\n');
 
             // calculate permutations
-            const permutations = await calculatePermutations(indexList, currentIndex);
+            const permutationsList = ...
+                const permutations = permutationsList.map((countyArr => {
+                    return countyArr.map((permutation, pIndex) => {
+                        return [pIndex, countyArr.length, ...permutation];
+                    });
+                }));
             // for testing purposes
             // continue; // enable to get only permutations for each index
 
@@ -458,22 +209,18 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                     // launch browser
                     const browser = await firefox.launch({
                         headless: true,
-
                     });
                     const page = await browser.newPage();
                     page.setDefaultTimeout(120000);
-                    // page.setDefaultTimeout({
-                    //     navigation: 10000, // equal to page.setDefaultNavigationTimeout(1000),
-                    //     waitForSelector: 120000, // set default timeout for page.waitForSelector
-                    //   });
+
                     // load page in browser
-                    // console.log(`${currentIndex.url}\n`);
                     await page.goto(currentIndex.url);
-                    // select second tab, no pictures only table
-                    // await page.click('div.tabBGN2L a.tabLink2L');
 
                     // for each permutation in county
                     for (let p = 0; p < loopArray[j].length; p += 1) {
+                        // create permutation file path
+                        const permFilePath = `${p}-${p}`;
+
                         // increase current permutation index
                         currentPermutation += 1;
                         const permPercent = (currentPermutation / totalPermutations) * 100;
@@ -521,19 +268,6 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                         const currentDezagregare1 = await mcSelectItem(page, '_paramsP_DEZAGREGARE1', k1);
                         console.log(`\t> dezagregare1 = ${currentDezagregare1}\n`);
 
-                        // get dezagregare_2 list of items from input: '4. Dezagregare 2'
-                        // const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
-
-
-                        // for each item in dezagregare_2 list
-                        // assemble current index path
-                        // const indexK2 = `${indexK1} k2[${k2 + 1}/${dez2List.length}]`;
-                        // console.log(`\n${indexK2}`);
-
-                        // select dezagregare_2 item
-                        // const currentDezagregare2 = await mcSelectItem(page, '_paramsP_DEZAGREGARE2', k2);
-                        // console.log(`\t> dezagregare2 = ${currentDezagregare2}\n`);
-
                         // select urban /rural checkboxes
                         await page.click(`div#xdo\\:_paramsP_M_R_div`);
                         await page.check(`li#xdo\\:xdo\\:_paramsP_M_R_div_li_0 label input`);
@@ -558,7 +292,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                         const countyValueItem = await county.$('input');
                         const countyId = await countyValueItem.getAttribute('value');
                         const countyName = await county.innerText();
-                        console.log(`\n${permIndex} >>>>>> ${indexK3} >>> [ ${countyId}, ${countyName} ]\n`);
+                        console.log(`\t>>>>>> ${indexK3} >>> [ ${countyId}, ${countyName} ]\n`);
                         // click to register county selection
                         await page.click('label[for=_paramsP_MACROREG]');
 
@@ -602,21 +336,24 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                         // // save current table to file
                         // click Apply button to load table on page
+                        console.log(`\tREQUEST data...`);
                         await page.click('button[title="Apply"]');
                         sleep(3);
 
                         try {
                             // get html table from frame
+                            console.log(`\tREAD data...`);
                             const tableFrame = page.frame('xdo:docframe0');
 
                             // test for data
+                            console.log(`\tTEST data...`);
                             await tableFrame.waitForSelector('g g g text');
                             const textTags = await tableFrame.$$('g g g text');
-                            console.log(`\t> text array: ${textTags.length} items\n`);
+                            console.log(`\t\t> text array: ${textTags.length} items\n`);
 
                             // if array of text has only one element, there is no data, continue to next uat
                             if (textTags.length === 1) {
-                                console.log('\t> NO DATA was returned, continue to next query ...\n');
+                                console.log('\t\t> NO DATA was returned, continue to next query ...\n');
                                 // save log
                                 fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA']}\n`);
                                 // reset uat selector, set back to none
@@ -639,7 +376,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                             // test if item exists
                             if (tableItem) {
-                                console.log('\t> ELEMENT "div.tableContainer" FOUND, processing ...');
+                                console.log('\t\t> ELEMENT "div.tableContainer" FOUND, processing ...');
 
                                 // get html from table item
                                 const tableHtml = await tableItem.innerHTML();
@@ -647,12 +384,12 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                                 // convert html table to json
                                 const converted = tabletojson.convert(tableHtml);
-                                console.log(`\t>> Returned table rows = ${converted[1].length}\n`);
+                                console.log(`\t\t>> Returned table rows = ${converted[1].length}\n`);
 
                                 // if first uat for current index:
                                 // if (k1 === 0 && k2 === 0 && j === 0 && k4 === 0 && y === permutations[j][0][0]) {
                                 if (!fs.existsSync(currentIndex.filePath)) {
-                                    console.log('\t>>> NEW table, creating file ...\n');
+                                    console.log('\t\t>>> NEW table, creating file ...\n');
                                     // console.log(converted);
 
                                     // create header row
@@ -710,7 +447,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                             }
 
                         } catch (e) {
-                            console.log(`\t> ERROR getting tabel from frame: ${e.message}\n`);
+                            console.log(`\t\t> ERROR getting tabel from frame: ${e.message}\n`);
                             // save log
                             fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], e.message.split('\n')[0]].join(',')}\n`);
 
@@ -777,7 +514,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
             }
 
             // mark file as done
-            console.log('index table download DONE!\n');
+            console.log('\tindex table download DONE!\n');
             fs.writeFileSync(currentIndex.doneMarkerPath, 'done\n');
 
             // remove current index download marker file
@@ -792,40 +529,21 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // EXPORTS
-module.exports = async (today, firstYear, lastYear, manualIndexesListFilePath, manualIndexesListUrl, indexesFilePath, metadataPath, logsPath, saveIndexListPath, tablesPath) => {
-    console.log(`indexesFilePath: ${indexesFilePath}`);
+module.exports = async (firstYear, lastYear, indexListPath, metadataPath, logsPath, downloadsPath) => {
+    console.log(`indexesFilePath: ${indexListPath}`);
 
-    // check if manual index list file exists
-    if (fs.existsSync(manualIndexesListFilePath)) {
-        // load manual indexes list into file
-        const manualIndexesList = readCSV(manualIndexesListFilePath, ',', '"').slice(1);
+    // check if input file is present
+    if (fs.existsSync(indexListPath)) {
+        // get list of indexes
+        const indexList = readCSV(indexListPath, '#').slice(1);
+        console.log(`Found ${indexList.length} TOTAL performance indexes\n`);
 
-        // input file is present
-        if (fs.existsSync(indexesFilePath)) {
-            // read file into array
-            const indexesArr = readCSV(indexesFilePath, '#').slice(1);
-            console.log(`indexesFilePath: CSV import >>> ${indexesArr.length} items!\n`);
+        // get data for primary indexes
+        await getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, logsPath, downloadsPath);
 
-            // creat list of domains for primary indexes, 13 selection boxes
-            const performanceIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori de performanță');
-
-            // get list of indexes
-            const indexList = !fs.existsSync(saveIndexListPath) ? await getIndexList(manualIndexesList, performanceIndexesArr, saveIndexListPath) : readCSV(saveIndexListPath, '#');
-            console.log(`Found ${indexList.length - 1} TOTAL primary indexes\n`);
-
-            // get data for primary indexes
-            await getPerformanceTableData(firstYear, lastYear, indexList.slice(1), metadataPath, logsPath, tablesPath);
-
-
-            // else
-        } else {
-            console.log(`ERROR: Missing input file >>> ${indexesFilePath}`);
-        }
-
-        // else print error and give download instructions
+        // else
     } else {
-        console.log(`ERROR: manual indexes list file '${manualIndexesListFilePath}' NOT FOUND`);
-        console.log(`Download from this link '${manualIndexesListUrl}' >> Indicatori Disponibili >> @click aici`);
-        console.log('Place downloaded file in "./data" folder\n');
+        console.log(`ERROR: Missing input file >>> ${indexListPath}`);
     }
+
 }
