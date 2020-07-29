@@ -2,6 +2,7 @@
 'use strict';
 
 // import libraries
+const path = require('path');
 const createFolder = require('./create-folder');
 const readCSV = require('./read-csv');
 const {
@@ -64,20 +65,87 @@ async function getItemList(element, marker) {
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// replace RO characters
+function replaceRoChars (inString) {
+    return inString
+        .replace(/\s+/g, ' ')
+
+        .replace(/î/g, 'i')
+        .replace(/ă/g, 'a')
+        .replace(/ș/g, 's')
+        .replace(/ț/g, 't')
+        
+        .replace(/î/g, 'i')
+        .replace(/Î/g, 'I')
+        .replace(/â/g, 'a')
+        .replace(/ă/g, 'a')
+        .replace(/ş/g, 's')
+        .replace(/ţ/g, 't')
+        
+        .replace(/î/g, 'i')
+        .replace(/ă/g, 'a')
+        .replace(/ş/g, 's')
+        .replace(/ţ/g, 't');
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get current index params
 function getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloadsPath) {
     const currentIndexName = indexList[i][4];
     const currentIndexList = indexList.filter(item => item[0] === indexList[i][0]);
 
     // clean index name of unusable characters
-    const cleanIndexName = currentIndexName.trim()
-        .replace(/\//g, '-')
-        .replace(/\s/g, '\ ');
+    const cleanIndexName = replaceRoChars(currentIndexName).trim()
+        .replace(/\/ de/g, ' - de')
+        .replace(/\//g, ' per ')
+        .replace(/\s+/g, ' ');
+
+    console.log(`cleanIndexName = \'${cleanIndexName}\'`);
 
     // create current index downloads path
     const currentDownloadsPath = `${downloadsPath}/performance/${cleanIndexName}`;
     // create downloads folder
     createFolder(i, currentDownloadsPath);
+
+    // remove romanian charecters from permutations file names
+    // console.log('\n//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////');
+    // const permutationsFileList = fs.readdirSync(`${permutationsPath}/performance`);
+    // try {
+    //     permutationsFileList.forEach((fileName, fIndex) => {
+    //         const newFileName = replaceRoChars(fileName);
+    //         console.log(`${fIndex} :: newFileName = ${newFileName}`);
+    //         fs.renameSync(`${permutationsPath}/performance/${fileName}`, `${permutationsPath}/performance/${newFileName}`);
+    //     });
+    // } catch (err) {
+    //     console.log(err);
+    // }
+
+    // remove romanian charecters from logs file names
+    // console.log('\n//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////');
+    // const logsFileList = fs.readdirSync(`${logsPath}/performance`);
+    // try {
+    //     logsFileList.forEach((fileName, fIndex) => {
+    //         const newFileName = replaceRoChars(fileName);
+    //         console.log(`${fIndex} :: newFileName = ${newFileName}`);
+    //         fs.renameSync(`${logsPath}/performance/${fileName}`, `${logsPath}/performance/${newFileName}`);
+    //     });
+    // } catch (err) {
+    //     console.log(err);
+    // }
+
+    // remove romanian charecters from downloads folder names
+    console.log('\n//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////');
+    const downloadsFolderList = fs.readdirSync(`${downloadsPath}/performance`);
+    try {
+        downloadsFolderList.forEach((folderName, fIndex) => {
+            const newFolderName = replaceRoChars(folderName);
+            console.log(`${fIndex} :: newFolderName = ${newFolderName}`);
+            fs.renameSync(`${downloadsPath}/performance/${folderName}`, `${downloadsPath}/performance/${newFolderName}`);
+        });
+    } catch (err) {
+        console.log(err);
+    }
+    
 
     // return current index parameters
     return {
@@ -175,7 +243,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
             continue;
 
             // else
-        } else if (fs.existsSync(currentIndex.permutationsPath)) {
+        } else if (fs.existsSync(currentIndex.permutationsPath, 'us-ascii')) {
             console.log('\t> marker file is not present, creating ...\n');
 
             // create marker file to signal dowloading

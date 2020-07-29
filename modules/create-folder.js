@@ -7,7 +7,7 @@ module.exports = (index, itemPath) => {
   // create path
   try {
     fs.ensureDirSync(itemPath);
-    console.log(`${index} :: PATH: ${itemPath} successfully created!\n`);
+    console.log(`${index} :: PATH: \'${itemPath}\' successfully created!\n`);
   } catch (err) {
     console.error(err);
   }

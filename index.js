@@ -1,7 +1,7 @@
 // get exams data from website [http://static.bacalaureat.edu.ro/2018/rapoarte_sept/index.html]
 
 const fs = require('fs-extra');
-// const glob = require('glob');
+// const path = require('path');
 
 // import local modules
 const createFolder = require('./modules/create-folder');
@@ -18,7 +18,7 @@ const eDemosFirstYear = 1990;
 const eDemosLastYear = 2020;
 
 // local paths
-const dataPath = './data';
+const dataPath = `${__dirname}/data`;
 const localPaths = {
     metadata: 'metadata',
     downloads: 'downloads', // dowloaded data, one file/permutation
@@ -28,12 +28,12 @@ const localPaths = {
     exports: 'exports', // XLSX files
     logs: 'logs',
 };
-const indexesFilePath = './data/today/metadata/indexesPaths.csv';
-const saveUatPath = './data/today/metadata/uatList.csv';
-// const saveLogPath = './data/today/logs/logsType.csv';
-const primaryIndexListPath = './data/today/metadata/primaryIndexList.csv';
-const performanceIndexListPath = './data/today/metadata/performanceIndexList.csv';
-const manualIndexesListFilePath = './data/export_available_indicators.csv';
+const indexesFilePath = `${dataPath}/today/metadata/indexesPaths.csv`;
+const saveUatPath = `${dataPath}/today/metadata/uatList.csv`;
+// const saveLogPath = `${dataPath}/today/logs/logsType.csv`;
+const primaryIndexListPath = `${dataPath}/today/metadata/primaryIndexList.csv`;
+const performanceIndexListPath = `${dataPath}/today/metadata/performanceIndexList.csv`;
+const manualIndexesListFilePath = `${dataPath}/export_available_indicators.csv`;
 
 // remote paths
 const manualIndexesListUrl = 'http://edemos.insse.ro/portal/faces/oracle/webcenter/portalapp/pages/report-access.jspx?_adf.ctrl-state=11ci4hxqyw_4&_afrLoop=2928625242659429&_afrWindowMode=0&_afrWindowId=11ci4hxqyw_1';
