@@ -21,7 +21,7 @@ const eDemosLastYear = 2020;
 const dataPath = './data';
 const localPaths = {
     metadata: 'metadata',
-    dowloads: 'downloads', // dowloaded data, one file/permutation
+    downloads: 'downloads', // dowloaded data, one file/permutation
     permutations: 'permutations',
     tables: 'tables', // CSV with '#' delimiter
     stables: 'stables', // standard tables, CSV with ',' delimiter
@@ -199,6 +199,7 @@ async function main() {
                 eDemosLastYear,
                 performanceIndexListPath.replace('today', secondaryArg),
                 `${dataPath}/${secondaryArg}/${localPaths.metadata}`,
+                `${dataPath}/${secondaryArg}/${localPaths.permutations}`,
                 `${dataPath}/${secondaryArg}/${localPaths.logs}`,
                 `${dataPath}/${secondaryArg}/${localPaths.downloads}`
             );

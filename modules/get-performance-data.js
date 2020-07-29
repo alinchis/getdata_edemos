@@ -2,7 +2,7 @@
 'use strict';
 
 // import libraries
-const createFolder = require('./modules/create-folder');
+const createFolder = require('./create-folder');
 const readCSV = require('./read-csv');
 const {
     chromium: chrome,
@@ -65,12 +65,12 @@ async function getItemList(element, marker) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get current index params
-function getCurrentIndexParams(indexList, i, metadataPath, logsPath, downloadsPath) {
+function getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloadsPath) {
     const currentIndexName = indexList[i][4];
     const currentIndexList = indexList.filter(item => item[0] === indexList[i][0]);
 
     // create current index downloads path
-    const currentDownloadsPath = `${downloadsPath}/${currentIndexName.trim().replace(/\//g, '-')}`;
+    const currentDownloadsPath = `${downloadsPath}/performance/${currentIndexName.trim().replace(/\//g, '-')}`;
     // create downloads folder
     createFolder(i, currentDownloadsPath);
 
@@ -80,9 +80,9 @@ function getCurrentIndexParams(indexList, i, metadataPath, logsPath, downloadsPa
         id: indexList[i][3],
         name: currentIndexName,
         downloadsPath: currentDownloadsPath,
-        permutationsPath: `${metadataPath}/_permutations_${currentIndexName.trim().replace(/\//g, '-')}.json`,
-        downloadingMarkerPath: `${logsPath}/_downloading_${currentIndexName.trim().replace(/\//g, '-')}`,
-        doneMarkerPath: `${logsPath}/_done_${currentIndexName.trim().replace(/\//g, '-')}`,
+        permutationsPath: `.${permutationsPath}/performance/${currentIndexName.trim().replace(/\//g, '-')}.json`,
+        downloadingMarkerPath: `${logsPath}/performance/_downloading_${currentIndexName.trim().replace(/\//g, '-')}`,
+        doneMarkerPath: `${logsPath}/performance/_done_${currentIndexName.trim().replace(/\//g, '-')}`,
         logPath: `${logsPath}/${currentIndexName.trim().replace(/\//g, '-')}.csv`,
         list: indexList.filter(item => item[0] === indexList[i][0]),
         index: currentIndexList.map(item => item[4]).indexOf(currentIndexName),
@@ -110,11 +110,11 @@ function checkLogs(permArr, currentIndex) {
             const strLogArr = [];
 
             // filter log items for current county
-            const countyArr = logArr.filter(item => item[5] === `${j}`);
+            const countyArr = logArr.filter(item => item[7] === `${j}`);
 
             // convert log array and filter rows marking good downloads
             countyArr.forEach((item) => {
-                if (item[9] === 'OK' || item[9] === 'NO DATA') strLogArr.push(`${item[2]},${item[3]},${item[4]},${item[7]}`);
+                if (item[11] === 'OK' || item[11] === 'NO DATA') strLogArr.push(`${item[2]},${item[3]},${item[4]},${item[5]},${item[6]},${item[9]}`);
             });
 
             // calculate new county array
@@ -147,7 +147,7 @@ function checkLogs(permArr, currentIndex) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get performance table data
-async function getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, logsPath, downloadsPath) {
+async function getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, permutationsPath, logsPath, downloadsPath) {
     console.log(`\n@getPerformanceTableData:: START\n`);
     console.log(`@getPerformanceTableData:: received [ ${indexList.length} ] items for index list`);
 
@@ -161,10 +161,10 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
         console.log(`\n${indexI} :: ${indexList[i][0]}\n`);
 
         // get index variables
-        const currentIndex = getCurrentIndexParams(indexList, i, metadataPath, logsPath, downloadsPath);
+        const currentIndex = getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloadsPath);
 
         // if 'download' marker for current index file already exists, skip to the next index
-        console.log(`@getPerformanceTableData:: current index marker file path: '${currentIndex.downloadingMarkerPath}'`);
+        console.log(`@getPerformanceTableData:: current index marker file path:\n'${currentIndex.downloadingMarkerPath}'\n`);
         if (fs.existsSync(currentIndex.downloadingMarkerPath)) {
             console.log('@getPerformanceTableData:: \'downloading\' marker file present, skipping current index ...\n');
             continue;
@@ -177,12 +177,8 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
             fs.writeFileSync(currentIndex.downloadingMarkerPath, 'marker\n');
 
             // calculate permutations
-            const permutationsList = ...
-                const permutations = permutationsList.map((countyArr => {
-                    return countyArr.map((permutation, pIndex) => {
-                        return [pIndex, countyArr.length, ...permutation];
-                    });
-                }));
+            const permutations = require(currentIndex.permutationsPath);
+
             // for testing purposes
             // continue; // enable to get only permutations for each index
 
@@ -190,10 +186,12 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
             let [loopArray, totalPermutations] = checkLogs(permutations, currentIndex);
 
             // init current params, for error log
-            let ey = 0;
-            let ek1 = 0;
-            let ek2 = 0;
-            let ek4 = 0;
+            let ecc = 0;        // current county (from permutation)
+            let ecp = 0;        // current permutation in county
+            let ey = 0;         // year
+            let ek1 = 0;        // 'dezagregare1'
+            let ek2 = 0;        // 'dezagregare2'
+            let ek4 = 0;        // UAT
 
             // init permutations counter
             let currentPermutation = 0;
@@ -204,6 +202,10 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                 // if current list of permutations in empty, continue
                 if (loopArray[j].length === 0) continue;
+
+                // create current county permutations folder
+                const currentDownloadsPath = `${currentIndex.downloadsPath}/${j}`;
+                createFolder(j, currentDownloadsPath);
 
                 try {
                     // launch browser
@@ -218,8 +220,6 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                     // for each permutation in county
                     for (let p = 0; p < loopArray[j].length; p += 1) {
-                        // create permutation file path
-                        const permFilePath = `${p}-${p}`;
 
                         // increase current permutation index
                         currentPermutation += 1;
@@ -228,12 +228,14 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                         // console.log(`${permIndex}   ////////////////////////////////////////////////////////////////////////////////////////////////`);
 
                         // load parameters for current loop
-                        const [y, k1, k2, k4] = loopArray[j][p];
-                        ey = y;
-                        ek1 = k1;
-                        ek2 = k2;
-                        ek4 = k4;
-                        console.log(`${permIndex} >>>>>> [ y = ${y}, k1 = ${k1}, k4 = ${k4} ] \n`);
+                        const [cc, cp, y, k1, k2, k4] = loopArray[j][p];
+                        ecc = cc;       // current county
+                        ecp = cp;       // current permutation in county
+                        ey = y;         // year
+                        ek1 = k1;       // 'dezagregare1'
+                        ek2 = k2;       // 'dezagregare2'
+                        ek4 = k4;       // UAT
+                        console.log(`${permIndex} >>>>>> [ cc = ${cc}, cp = ${cp}, y = ${y}, k1 = ${k1}, k4 = ${k4} ] \n`);
 
                         const indexY = `${indexI} ${currentIndex.id} y[${y}-${y + currentIndex.yearsStep - 1}/${currentIndex.yearStart}-${currentIndex.yearEnd}]`;
 
@@ -355,7 +357,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                             if (textTags.length === 1) {
                                 console.log('\t\t> NO DATA was returned, continue to next query ...\n');
                                 // save log
-                                fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA']}\n`);
+                                fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, cc, cp, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA']}\n`);
                                 // reset uat selector, set back to none
                                 page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
                                 await page.click('div#xdo\\:_paramsP_MOC_div');
@@ -386,14 +388,17 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                                 const converted = tabletojson.convert(tableHtml);
                                 console.log(`\t\t>> Returned table rows = ${converted[1].length}\n`);
 
-                                // if first uat for current index:
-                                // if (k1 === 0 && k2 === 0 && j === 0 && k4 === 0 && y === permutations[j][0][0]) {
-                                if (!fs.existsSync(currentIndex.filePath)) {
-                                    console.log('\t\t>>> NEW table, creating file ...\n');
+                                // prepare download file path
+                                const downloadFilePath = `${currentDownloadsPath}/${cc}-${cp}.csv`;
+
+                                // if first permutation for current county:
+                                let headerRow = [];
+                                if (cp == 0) {
+                                    console.log('\t\t>>> First permutation, creating file with header ...\n');
                                     // console.log(converted);
 
                                     // create header row
-                                    const headerRow = [
+                                    headerRow = [
                                         converted[0][0]['0'], // 'AN'
                                         converted[0][0]['2'], // 'MACROREGIUNE'
                                         converted[0][0]['4'], // 'REGIUNE'
@@ -409,7 +414,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                                     ];
 
                                     // create file for index
-                                    fs.writeFileSync(currentIndex.filePath, `${headerRow.join('#')}\n`);
+                                    fs.writeFileSync(downloadFilePath, `${headerRow.join('#')}\n`);
 
                                 }
 
@@ -434,22 +439,22 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                                     // append row to file
                                     // create file for index
-                                    fs.appendFileSync(currentIndex.filePath, `${newRow.join('#')}\n`);
+                                    fs.appendFileSync(downloadFilePath, `${newRow.join('#')}\n`);
 
                                 });
 
                                 // save log
-                                fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], 'OK'].join(',')}\n`);
+                                fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, cc, cp, y, k1, k2, j, countyName, k4, uats[0][1], 'OK'].join(',')}\n`);
 
                             } else {
                                 // save log
-                                fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA'].join(',')}\n`);
+                                fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, cc, cp, y, k1, k2, j, countyName, k4, uats[0][1], 'NO DATA'].join(',')}\n`);
                             }
 
                         } catch (e) {
-                            console.log(`\t\t> ERROR getting tabel from frame: ${e.message}\n`);
+                            console.log(`\t\t> ERROR getting table from frame: ${e.message}\n`);
                             // save log
-                            fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, y, k1, k2, j, countyName, k4, uats[0][1], e.message.split('\n')[0]].join(',')}\n`);
+                            fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, cc, cp, y, k1, k2, j, countyName, k4, uats[0][1], e.message.split('\n')[0]].join(',')}\n`);
 
                             // reset uat selector, set back to none
                             page.waitForSelector('div#xdo\\:_paramsP_MOC_div');
@@ -509,7 +514,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                     await browser.close();
 
                     // update log file
-                    fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, ey, ek1, ek2, j, '', ek4, '', e.message.split('\n')[0]].join(',')}\n`);
+                    fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, ecc, ecp, ey, ek1, ek2, j, '', ek4, '', e.message.split('\n')[0]].join(',')}\n`);
                 }
             }
 
@@ -529,8 +534,9 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // EXPORTS
-module.exports = async (firstYear, lastYear, indexListPath, metadataPath, logsPath, downloadsPath) => {
+module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permutationsPath, logsPath, downloadsPath) => {
     console.log(`indexesFilePath: ${indexListPath}`);
+    // console.log(firstYear, lastYear, indexListPath, metadataPath, permutationsPath, logsPath, downloadsPath);
 
     // check if input file is present
     if (fs.existsSync(indexListPath)) {
@@ -538,8 +544,8 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, logsPa
         const indexList = readCSV(indexListPath, '#').slice(1);
         console.log(`Found ${indexList.length} TOTAL performance indexes\n`);
 
-        // get data for primary indexes
-        await getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, logsPath, downloadsPath);
+        // get data for performance indexes
+        await getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, permutationsPath, logsPath, downloadsPath);
 
         // else
     } else {
