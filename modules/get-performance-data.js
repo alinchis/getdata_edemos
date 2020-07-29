@@ -69,8 +69,13 @@ function getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloa
     const currentIndexName = indexList[i][4];
     const currentIndexList = indexList.filter(item => item[0] === indexList[i][0]);
 
+    // clean index name of unusable characters
+    const cleanIndexName = currentIndexName.trim()
+        .replace(/\//g, '-')
+        .replace(/\s/g, '\ ');
+
     // create current index downloads path
-    const currentDownloadsPath = `${downloadsPath}/performance/${currentIndexName.trim().replace(/\//g, '-')}`;
+    const currentDownloadsPath = `${downloadsPath}/performance/${cleanIndexName}`;
     // create downloads folder
     createFolder(i, currentDownloadsPath);
 
@@ -80,10 +85,10 @@ function getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloa
         id: indexList[i][3],
         name: currentIndexName,
         downloadsPath: currentDownloadsPath,
-        permutationsPath: `.${permutationsPath}/performance/${currentIndexName.trim().replace(/\//g, '-')}.json`,
-        downloadingMarkerPath: `${logsPath}/performance/_downloading_${currentIndexName.trim().replace(/\//g, '-')}`,
-        doneMarkerPath: `${logsPath}/performance/_done_${currentIndexName.trim().replace(/\//g, '-')}`,
-        logPath: `${logsPath}/${currentIndexName.trim().replace(/\//g, '-')}.csv`,
+        permutationsPath: `${permutationsPath}/performance/${cleanIndexName}.json`,
+        downloadingMarkerPath: `${logsPath}/performance/_downloading_${cleanIndexName}`,
+        doneMarkerPath: `${logsPath}/performance/_done_${cleanIndexName}`,
+        logPath: `${logsPath}/performance/${cleanIndexName}.csv`,
         list: indexList.filter(item => item[0] === indexList[i][0]),
         index: currentIndexList.map(item => item[4]).indexOf(currentIndexName),
         yearStart: Number(indexList[i][5]),
@@ -164,20 +169,20 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
         const currentIndex = getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloadsPath);
 
         // if 'download' marker for current index file already exists, skip to the next index
-        console.log(`@getPerformanceTableData:: current index marker file path:\n'${currentIndex.downloadingMarkerPath}'\n`);
+        console.log(`@getPerformanceTableData:: current index \'downloading\' marker file path:\n'${currentIndex.downloadingMarkerPath}'\n`);
         if (fs.existsSync(currentIndex.downloadingMarkerPath)) {
-            console.log('@getPerformanceTableData:: \'downloading\' marker file present, skipping current index ...\n');
+            console.log('\t> marker file present, skipping current index ...\n');
             continue;
 
             // else
-        } else {
-            console.log('@getPerformanceTableData:: marker file is not present, creating ...\n');
+        } else if (fs.existsSync(currentIndex.permutationsPath)) {
+            console.log('\t> marker file is not present, creating ...\n');
 
             // create marker file to signal dowloading
             fs.writeFileSync(currentIndex.downloadingMarkerPath, 'marker\n');
 
             // calculate permutations
-            const permutations = require(currentIndex.permutationsPath);
+            const permutations = JSON.parse(fs.readFileSync(currentIndex.permutationsPath));
 
             // for testing purposes
             // continue; // enable to get only permutations for each index
@@ -524,6 +529,8 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
             // remove current index download marker file
             if (fs.existsSync(currentIndex.downloadingMarkerPath)) fs.unlinkSync(currentIndex.downloadingMarkerPath);
+        } else {
+            console.error(`\nERROR: permutation file > \'${currentIndex.permutationsPath}\' NOT FOUND!\n`);
         }
 
     }
@@ -544,8 +551,25 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
         const indexList = readCSV(indexListPath, '#').slice(1);
         console.log(`Found ${indexList.length} TOTAL performance indexes\n`);
 
-        // get data for performance indexes
-        await getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, permutationsPath, logsPath, downloadsPath);
+        // set first and last index for download
+        const firstIndex = 0;
+        const lastIndex = 30;       // not included
+
+        // if first and last indexes are in range
+        if (firstIndex >= 0 && lastIndex >= firstIndex && lastIndex <= indexList.length) {
+            // filter array of indexes
+            const filteredIndexList = indexList.slice(firstIndex, lastIndex);
+            console.log(`\nFiltered index list ( ${filteredIndexList.length} items ):`);
+            filteredIndexList.forEach((item, index) => {
+                console.log(`\t[ ${firstIndex + index} ] : ${item[3]} >>> ${item[1]} : ${item[0]}`);
+            })
+
+            // get data for performance indexes
+            await getPerformanceTableData(firstYear, lastYear, filteredIndexList, metadataPath, permutationsPath, logsPath, downloadsPath);
+
+        } else {
+            console.log(`ERROR: first or/and last index not in range: 0 <= fi[${firstIndex}] <= li[${lastIndex}] <= ${indexList.length - 1}\n`);
+        }
 
         // else
     } else {
