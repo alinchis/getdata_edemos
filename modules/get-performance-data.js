@@ -134,17 +134,17 @@ function getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloa
     // }
 
     // remove romanian charecters from downloads folder names
-    console.log('\n//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////');
-    const downloadsFolderList = fs.readdirSync(`${downloadsPath}/performance`);
-    try {
-        downloadsFolderList.forEach((folderName, fIndex) => {
-            const newFolderName = replaceRoChars(folderName);
-            console.log(`${fIndex} :: newFolderName = ${newFolderName}`);
-            fs.renameSync(`${downloadsPath}/performance/${folderName}`, `${downloadsPath}/performance/${newFolderName}`);
-        });
-    } catch (err) {
-        console.log(err);
-    }
+    // console.log('\n//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////');
+    // const downloadsFolderList = fs.readdirSync(`${downloadsPath}/performance`);
+    // try {
+    //     downloadsFolderList.forEach((folderName, fIndex) => {
+    //         const newFolderName = replaceRoChars(folderName);
+    //         console.log(`${fIndex} :: newFolderName = ${newFolderName}`);
+    //         fs.renameSync(`${downloadsPath}/performance/${folderName}`, `${downloadsPath}/performance/${newFolderName}`);
+    //     });
+    // } catch (err) {
+    //     console.log(err);
+    // }
     
 
     // return current index parameters
@@ -621,7 +621,7 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
 
         // set first and last index for download
         const firstIndex = 0;
-        const lastIndex = 30;       // not included
+        const lastIndex = indexList.length;       // not included
 
         // if first and last indexes are in range
         if (firstIndex >= 0 && lastIndex >= firstIndex && lastIndex <= indexList.length) {

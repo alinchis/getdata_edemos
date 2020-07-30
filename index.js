@@ -10,6 +10,7 @@ const splitIndexesList = require('./modules/split-indexes-list');
 const calculatePermutations = require('./modules/permutations');
 const getPrimaryData = require('./modules/get-primary-data');
 const getPerformanceData = require('./modules/get-performance-data');
+const assembleData = require('./modules/assemble-data');
 const standardizeCsv = require('./modules/convert-to-standard-csv');
 const exportToXlsx = require('./modules/export-to-xlsx');
 
@@ -66,7 +67,7 @@ async function main() {
   3. -p         : create permutations files\n\
   4. -d1 [date] : download primary data. if date parameter is omitted, current date is applied\n\
   5. -d2 [date] : download performance data. if date parameter is omitted, current date is applied\n\
-  6. -c  [date] : combine dowloaded data into CSV files, date is necessary. ex: '2020-03-01'\\n\`;
+  6. -a  [date] : assemble dowloaded data into CSV files, date is necessary. ex: '2020-03-01'\\n\`;
   7. -s  [date] : save data to standard CSV (',' delimiter), date is necessary. ex: '2020-03-01'\\n\`;
   8. -e  [date] : export tables to xlsx, date is necessary. ex: '2020-03-01'\n`;
 
@@ -208,22 +209,22 @@ async function main() {
 
 
         // 6. else if argument is 'c'
-    } else if (mainArg === '-c') {
+    } else if (mainArg === '-a') {
 
         // stage 6: verify done tables for double data
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
-        console.log('STAGE 3: combine dowloaded data into csv files\n');
+        console.log('STAGE 3: assemble dowloaded data into csv files\n');
 
-        // const downloadsPath = `${dataPath}/${secondaryArg}/${localPaths.downloads}`;
-        // const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
-        // const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
+        const downloadsPath = `${dataPath}/${secondaryArg}/${localPaths.downloads}`;
+        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
 
-        // if (fs.existsSync(tablesPath) && fs.existsSync(exportsPath)) {
-        //     console.log('PATHS found...');
-        //     cleanCsv(tablesPath, `${dataPath}/${secondaryArg}/${localPaths.logs}`);
-        // } else {
-        //     console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
-        // }
+        if (fs.existsSync(downloadsPath) && fs.existsSync(tablesPath)) {
+            console.log('PATHS found, running @assembleData...');
+            assembleData(downloadsPath, tablesPath);
+            
+        } else {
+            console.log(`ERROR: Provided data path ${secondaryArg} not found!`);
+        }
 
         // 7. else if argument is 's'
     } else if (mainArg === '-s') {
@@ -232,8 +233,8 @@ async function main() {
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 4: covert CSV to standard CSV\n');
 
-        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
-        const sTablesPath = `${dataPath}/${secondaryArg}/${localPaths.stables}`;
+        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}/performance`;
+        const sTablesPath = `${dataPath}/${secondaryArg}/${localPaths.stables}/performance`;
 
         if (fs.existsSync(tablesPath) && fs.existsSync(sTablesPath)) {
             console.log('PATHS found...');
@@ -249,8 +250,8 @@ async function main() {
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 5: Export data to XLSX files\n');
 
-        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
-        const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
+        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}/performance`;
+        const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}/performance`;
 
         if (fs.existsSync(tablesPath) && fs.existsSync(exportsPath)) {
             console.log('PATHS found...');
