@@ -618,6 +618,7 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
         // get list of indexes
         const indexList = readCSV(indexListPath, '#').slice(1);
         console.log(`Found ${indexList.length} TOTAL performance indexes\n`);
+        await sleep(3);
 
         // set first and last index for download
         const firstIndex = 0;
@@ -630,7 +631,8 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
             console.log(`\nFiltered index list ( ${filteredIndexList.length} items ):`);
             filteredIndexList.forEach((item, index) => {
                 console.log(`\t[ ${firstIndex + index} ] : ${item[3]} >>> ${item[1]} : ${item[0]}`);
-            })
+            });
+            await sleep(3);
 
             // get data for performance indexes
             await getPerformanceTableData(firstYear, lastYear, filteredIndexList, metadataPath, permutationsPath, logsPath, downloadsPath);
