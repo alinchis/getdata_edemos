@@ -18,6 +18,11 @@ const {
 
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // CONSTANTS
+const pageDefaultTimeout = 30000;
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // METHODS
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,18 +34,29 @@ function sleep(seconds) {
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // multiple choice check box select item
 async function mcCBSelectItem(element, marker, choice, step = 1, maxChoice = choice + 1) {
-    // select all items from input
+    try {
+        // select all items from input
     await element.click(`div#xdo\\:${marker}_div`);
     if (choice === 'all') {
         await element.check(`li#xdo\\:xdo\\:${marker}_div_li_${choice} label input`);
     } else {
         for (let i = 0; i < step; i += 1) {
-            if (choice + i < maxChoice) await element.check(`li#xdo\\:xdo\\:${marker}_div_li_${choice + i} label input`);
+            try {
+                if (choice + i < maxChoice) await element.check(`li#xdo\\:xdo\\:${marker}_div_li_${choice + i} label input`);
+            } catch (e) {
+                console.log(`@mcCBSelectItem:: ERROR: marker = '${marker}'; choice = '${choice + 1}'; step = '${step}'`);
+                console.log(e);
+            }
         }
     }
 
     // click to register input selection
     await element.click(`label[for=${marker}]`);
+    } catch (err) {
+        console.log(`@mcCBSelectItem:: ERROR: marker = '${marker}'; choice = '${choice + 1}'`);
+        console.log(err);
+    }
+    
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,26 +82,29 @@ async function getItemList(element, marker) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // replace RO characters
-function replaceRoChars (inString) {
+function replaceRoChars(inString) {
     return inString
+        .replace(/-/g, ' - ')
         .replace(/\s+/g, ' ')
 
         .replace(/î/g, 'i')
         .replace(/ă/g, 'a')
         .replace(/ș/g, 's')
         .replace(/ț/g, 't')
-        
+
         .replace(/î/g, 'i')
         .replace(/Î/g, 'I')
         .replace(/â/g, 'a')
         .replace(/ă/g, 'a')
         .replace(/ş/g, 's')
         .replace(/ţ/g, 't')
-        
+
         .replace(/î/g, 'i')
         .replace(/ă/g, 'a')
         .replace(/ş/g, 's')
-        .replace(/ţ/g, 't');
+        .replace(/ţ/g, 't')
+        
+        .replace(/ț/g, 't');
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,6 +117,7 @@ function getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloa
     const cleanIndexName = replaceRoChars(currentIndexName).trim()
         .replace(/\/ de/g, ' - de')
         .replace(/\//g, ' per ')
+        .replace(/-/g, ' - ')
         .replace(/\s+/g, ' ');
 
     console.log(`cleanIndexName = \'${cleanIndexName}\'`);
@@ -145,16 +165,17 @@ function getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloa
     // } catch (err) {
     //     console.log(err);
     // }
-    
+
 
     // return current index parameters
     return {
         url: indexList[i][2],
         id: indexList[i][3],
         name: currentIndexName,
+        cleanName: cleanIndexName,
         downloadsPath: currentDownloadsPath,
         permutationsPath: `${permutationsPath}/performance/${cleanIndexName}.json`,
-        downloadingMarkerPath: `${logsPath}/performance/_downloading_${cleanIndexName}`,
+        downloadingMarkerPath: `${logsPath}/performance/_downloading_j_${cleanIndexName}`,
         doneMarkerPath: `${logsPath}/performance/_done_${cleanIndexName}`,
         logPath: `${logsPath}/performance/${cleanIndexName}.csv`,
         list: indexList.filter(item => item[0] === indexList[i][0]),
@@ -185,9 +206,20 @@ function checkLogs(permArr, currentIndex) {
             // filter log items for current county
             const countyArr = logArr.filter(item => item[7] === `${j}`);
 
-            // convert log array and filter rows marking good downloads
+            // check for multiple failure to download
+            // const countySkipArray = [];
+            // permArr[j].forEach((perm) => {
+            //     // check number of occurances in logs
+            //     const permCounter = countyArr.filter(logPerm => logPerm[3] == perm[1]).length;
+
+            //     // if counter is greater or equal to 3, add permutation index to county skip array
+            //     if (permCounter >= 3) countySkipArray.push(perm[1]);
+            // });
+
+            // convert log array to resemble permutations array and filter rows marking good downloads
             countyArr.forEach((item) => {
-                if (item[11] === 'OK' || item[11] === 'NO DATA') strLogArr.push(`${item[2]},${item[3]},${item[4]},${item[5]},${item[6]},${item[9]}`);
+                // console.log(`status = '${item[11]}' #################################`);
+                if (item[11] === 'OK' || item[11] === 'NO DATA' || item[11].split(' ')[0] === 'Timeout') strLogArr.push(`${item[2]},${item[3]},${item[4]},${item[5]},${item[6]},${item[9]}`);
             });
 
             // calculate new county array
@@ -220,7 +252,7 @@ function checkLogs(permArr, currentIndex) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get performance table data
-async function getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, permutationsPath, logsPath, downloadsPath) {
+async function getPerformanceTableData(firstYear, lastYear, indexList, metadataPath, permutationsPath, logsPath, downloadsPath, includeList, skipList) {
     console.log(`\n@getPerformanceTableData:: START\n`);
     console.log(`@getPerformanceTableData:: received [ ${indexList.length} ] items for index list`);
 
@@ -236,19 +268,10 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
         // get index variables
         const currentIndex = getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloadsPath);
 
-        // if 'download' marker for current index file already exists, skip to the next index
-        console.log(`@getPerformanceTableData:: current index \'downloading\' marker file path:\n'${currentIndex.downloadingMarkerPath}'\n`);
-        if (fs.existsSync(currentIndex.downloadingMarkerPath)) {
-            console.log('\t> marker file present, skipping current index ...\n');
-            continue;
+        if (skipList.includes(currentIndex.id)) continue;
 
-            // else
-        } else if (fs.existsSync(currentIndex.permutationsPath, 'us-ascii')) {
-            console.log('\t> marker file is not present, creating ...\n');
 
-            // create marker file to signal dowloading
-            fs.writeFileSync(currentIndex.downloadingMarkerPath, 'marker\n');
-
+        if (fs.existsSync(currentIndex.permutationsPath)) {
             // calculate permutations
             const permutations = JSON.parse(fs.readFileSync(currentIndex.permutationsPath));
 
@@ -259,22 +282,30 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
             let [loopArray, totalPermutations] = checkLogs(permutations, currentIndex);
 
             // init current params, for error log
-            let ecc = 0;        // current county (from permutation)
-            let ecp = 0;        // current permutation in county
-            let ey = 0;         // year
-            let ek1 = 0;        // 'dezagregare1'
-            let ek2 = 0;        // 'dezagregare2'
-            let ek4 = 0;        // UAT
-
-            // init permutations counter
-            let currentPermutation = 0;
+            let ecc = 0; // current county (from permutation)
+            let ecp = 0; // current permutation in county
+            let ey = 0; // year
+            let ek1 = 0; // 'dezagregare1'
+            let ek2 = 0; // 'dezagregare2'
+            let ek4 = 0; // UAT
 
             // for each county in array of permutations /loop array
             for (let j = 0; j < 42; j += 1) {
-                console.log(`\n// county = ${j}/42 /////////////////////////////////////////////////////////////////////////////////////////////////////\n`);
+                // console.log(`\n// county = ${j}/42 /////////////////////////////////////////////////////////////////////////////////////////////////////\n`);
+                // init permutations counter
+                let currentPermutation = 0;
 
-                // if current list of permutations in empty, continue
-                if (loopArray[j].length === 0) continue;
+                // if 'download' marker for current index file already exists, skip to the next index
+                const countyDownloadMarker = currentIndex.downloadingMarkerPath.replace('_j_', `_${j}_`)
+                console.log(`\t> \'downloading\' marker file path: '${countyDownloadMarker}'\n`);
+                if (loopArray[j].length === 0 || fs.existsSync(countyDownloadMarker)) {
+                    console.log('\t>> \'downloading\' marker file present, skipping current county for index ...');
+                    continue;
+                } else {
+                    // create marker file to signal dowloading
+                    console.log('\t>> \'downloading\' marker file is not present, creating ...\n');
+                    fs.writeFileSync(countyDownloadMarker, 'marker\n');
+                }
 
                 // create current county permutations folder
                 const currentDownloadsPath = `${currentIndex.downloadsPath}/${j}`;
@@ -286,7 +317,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                         headless: true,
                     });
                     const page = await browser.newPage();
-                    page.setDefaultTimeout(120000);
+                    page.setDefaultTimeout(pageDefaultTimeout);
 
                     // load page in browser
                     await page.goto(currentIndex.url);
@@ -296,19 +327,19 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                         // increase current permutation index
                         currentPermutation += 1;
-                        const permPercent = (currentPermutation / totalPermutations) * 100;
-                        const permIndex = `${currentPermutation}/${totalPermutations} [ ${permPercent.toFixed(2)} % ]`;
+                        const permPercent = (currentPermutation / loopArray[j].length) * 100; // replaced totalPermutations
+                        const permIndex = `${currentPermutation}/${loopArray[j].length} [ ${permPercent.toFixed(2)} % ]`;
                         // console.log(`${permIndex}   ////////////////////////////////////////////////////////////////////////////////////////////////`);
 
                         // load parameters for current loop
                         const [cc, cp, y, k1, k2, k4] = loopArray[j][p];
-                        ecc = cc;       // current county
-                        ecp = cp;       // current permutation in county
-                        ey = y;         // year
-                        ek1 = k1;       // 'dezagregare1'
-                        ek2 = k2;       // 'dezagregare2'
-                        ek4 = k4;       // UAT
-                        console.log(`${permIndex} >>>>>> [ cc = ${cc}, cp = ${cp}, y = ${y}, k1 = ${k1}, k4 = ${k4} ] \n`);
+                        ecc = cc; // current county
+                        ecp = cp; // current permutation in county
+                        ey = y; // year
+                        ek1 = k1; // 'dezagregare1'
+                        ek2 = k2; // 'dezagregare2'
+                        ek4 = k4; // UAT
+                        console.log(`${permIndex} >>>[ cc = ${cc}, cp = ${cp}, y = ${y}, k1 = ${k1}, k4 = ${k4} ] \n`);
 
                         const indexY = `${indexI} ${currentIndex.id} y[${y}-${y + currentIndex.yearsStep - 1}/${currentIndex.yearStart}-${currentIndex.yearEnd}]`;
 
@@ -349,7 +380,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                         await page.check(`li#xdo\\:xdo\\:_paramsP_M_R_div_li_1 label input`);
                         await page.click(`div#xdo\\:_paramsP_M_R_div`);
                         // click to register input selection
-                        await page.click('label[for=_paramsP_MACROREG]');
+                        await page.click(`label[for=_paramsP_AN_REF]`);
                         // await sleep(60);
 
 
@@ -369,7 +400,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                         const countyName = await county.innerText();
                         console.log(`\t>>>>>> ${indexK3} >>> [ ${countyId}, ${countyName} ]\n`);
                         // click to register county selection
-                        await page.click('label[for=_paramsP_MACROREG]');
+                        await page.click(`label[for=_paramsP_AN_REF]`);
 
                         // get uat list
                         const uatList = await getItemList(page, '_paramsP_MOC');
@@ -390,6 +421,9 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                         // select uat
                         await page.waitForSelector('div#xdo\\:_paramsP_MOC_div')
                         await page.click('div#xdo\\:_paramsP_MOC_div');
+                        // uncheck first item, selected by default
+                        await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_0`);
+                        // select uats
                         for (let s = 0; s < currentIndex.uatStep; s += 1) {
                             const newK4 = k4 + s;
                             if (newK4 < uatList.length) {
@@ -404,24 +438,24 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                             }
                         }
 
-                        console.log(`${indexK4} >>> [ ${countyId}, ${countyName} ]\n\tUAT(s): [ ${uats.join('; ')} ]`);
+                        console.log(`${indexK4} >>> [ ${countyId}, ${countyName} ]\n\t>>> UAT(s): [ ${uats.join('; ')} ]`);
                         // click to register uat selection
                         // await uat.click();
-                        await page.click('label[for=_paramsP_MACROREG]');
+                        await page.click(`label[for=_paramsP_AN_REF]`);
 
                         // // save current table to file
                         // click Apply button to load table on page
-                        console.log(`\tREQUEST data...`);
+                        console.log(`\t\t>>> REQUEST data...`);
                         await page.click('button[title="Apply"]');
-                        sleep(3);
+                        await sleep(1);
 
                         try {
                             // get html table from frame
-                            console.log(`\tREAD data...`);
+                            console.log(`\t\t>>> READ data...`);
                             const tableFrame = page.frame('xdo:docframe0');
 
                             // test for data
-                            console.log(`\tTEST data...`);
+                            console.log(`\t\t>>> TEST data...`);
                             await tableFrame.waitForSelector('g g g text');
                             const textTags = await tableFrame.$$('g g g text');
                             console.log(`\t\t> text array: ${textTags.length} items\n`);
@@ -438,7 +472,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                                     const newK4 = k4 + s;
                                     if (newK4 < uatList.length) await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
                                 }
-                                await page.click('label[for=_paramsP_MACROREG]');
+                                await page.click(`label[for=_paramsP_AN_REF]`);
 
                                 // continue, skip to next query
                                 continue;
@@ -492,9 +526,12 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                                 }
 
                                 // push each item into new array
+                                // console.log('Array:')
                                 converted[1].forEach((row) => {
                                     // create new row element
+                                    // console.log(row);
                                     const rowUat = uats.filter(item => item[1] === row['9'])[0];
+                                    // console.log(rowUat);
                                     const newRow = [
                                         row['0'], // 'AN'
                                         row['2'], // 'MACROREGIUNE'
@@ -536,7 +573,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                                 const newK4 = k4 + s;
                                 if (newK4 < uatList.length) await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
                             }
-                            await page.click('label[for=_paramsP_MACROREG]');
+                            await page.click(`label[for=_paramsP_AN_REF]`);
 
                             // wait a second
                             await sleep(1);
@@ -552,13 +589,13 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                             const newK4 = k4 + s;
                             if (newK4 < uatList.length) await page.uncheck(`input#xdo\\:xdo\\:_paramsP_MOC_div_cb_${newK4}`);
                         }
-                        await page.click('label[for=_paramsP_MACROREG]');
+                        await page.click(`label[for=_paramsP_AN_REF]`);
 
                         // wait a second
                         await sleep(1);
 
                         // click to close county selection
-                        // await page.click('label[for=_paramsP_MACROREG]');
+                        // await page.click(`label[for=_paramsP_AN_REF]`);
                         // sleep(1);
 
                         // reset county selector, set back to all
@@ -589,16 +626,18 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                     // update log file
                     fs.appendFileSync(currentIndex.logPath, `${[i, currentIndex.id, ecc, ecp, ey, ek1, ek2, j, '', ek4, '', e.message.split('\n')[0]].join(',')}\n`);
                 }
+
+                // remove current index download marker file
+                if (fs.existsSync(countyDownloadMarker)) fs.unlinkSync(countyDownloadMarker);
             }
 
             // mark file as done
             console.log('\tindex table download DONE!\n');
             fs.writeFileSync(currentIndex.doneMarkerPath, 'done\n');
 
-            // remove current index download marker file
-            if (fs.existsSync(currentIndex.downloadingMarkerPath)) fs.unlinkSync(currentIndex.downloadingMarkerPath);
         } else {
-            console.error(`\nERROR: permutation file > \'${currentIndex.permutationsPath}\' NOT FOUND!\n`);
+            console.log(`clean index name = \'${currentIndex.cleanName}\'`);
+            console.log(`\nERROR: permutation file > \'${currentIndex.permutationsPath}\' NOT FOUND!\n`);
         }
 
     }
@@ -613,16 +652,26 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
     console.log(`indexesFilePath: ${indexListPath}`);
     // console.log(firstYear, lastYear, indexListPath, metadataPath, permutationsPath, logsPath, downloadsPath);
 
+    // create skip list
+    const skipList = [
+        'DER106A',
+        // 'DER107A',
+        'DER121A',
+        'DER146A',
+        'DER152A',
+        // 'DER2001',
+    ];
+
     // check if input file is present
     if (fs.existsSync(indexListPath)) {
         // get list of indexes
         const indexList = readCSV(indexListPath, '#').slice(1);
         console.log(`Found ${indexList.length} TOTAL performance indexes\n`);
-        await sleep(3);
+        // await sleep(3);
 
         // set first and last index for download
         const firstIndex = 0;
-        const lastIndex = indexList.length;       // not included
+        const lastIndex = indexList.length; // not included
 
         // if first and last indexes are in range
         if (firstIndex >= 0 && lastIndex >= firstIndex && lastIndex <= indexList.length) {
@@ -632,10 +681,10 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
             filteredIndexList.forEach((item, index) => {
                 console.log(`\t[ ${firstIndex + index} ] : ${item[3]} >>> ${item[1]} : ${item[0]}`);
             });
-            await sleep(3);
+            // await sleep(3);
 
             // get data for performance indexes
-            await getPerformanceTableData(firstYear, lastYear, filteredIndexList, metadataPath, permutationsPath, logsPath, downloadsPath);
+            await getPerformanceTableData(firstYear, lastYear, filteredIndexList, metadataPath, permutationsPath, logsPath, downloadsPath, includeList, skipList);
 
         } else {
             console.log(`ERROR: first or/and last index not in range: 0 <= fi[${firstIndex}] <= li[${lastIndex}] <= ${indexList.length - 1}\n`);
