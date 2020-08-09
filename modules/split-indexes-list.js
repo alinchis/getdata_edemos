@@ -153,7 +153,8 @@ async function getIndexList(manualIndexesList, urlTable, savePath) {
                 // set maxYears = yearsCount
                 // maxYears = maxYears > yearsCount ? yearsCount : maxYears;
                 // calculate years step
-                const yearsStep = maxYears < yearsCount ? maxYears : yearsCount;
+                // const yearsStep = maxYears < yearsCount ? maxYears : yearsCount; // removed, it seems they influence the limit differently than UATs selector
+                const yearsStep = 1;
                 // calculate uat_step
                 const uatStep = Math.round(maxYears / yearsStep);
 

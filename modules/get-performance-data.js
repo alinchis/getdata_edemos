@@ -19,7 +19,7 @@ const {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // CONSTANTS
-const pageDefaultTimeout = 30000;
+const pageDefaultTimeout = 180000;
 
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,6 +104,9 @@ function replaceRoChars(inString) {
         .replace(/ş/g, 's')
         .replace(/ţ/g, 't')
         
+        .replace(/Î/g, 'I')
+        .replace(/â/g, 'a')
+        .replace(/ș/g, 's')
         .replace(/ț/g, 't');
 }
 
@@ -311,10 +314,12 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                 const currentDownloadsPath = `${currentIndex.downloadsPath}/${j}`;
                 createFolder(j, currentDownloadsPath);
 
+                let browser = '';
+
                 try {
                     // launch browser
-                    const browser = await firefox.launch({
-                        headless: true,
+                    browser = await chrome.launch({
+                        headless: false,
                     });
                     const page = await browser.newPage();
                     page.setDefaultTimeout(pageDefaultTimeout);
@@ -652,14 +657,23 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
     console.log(`indexesFilePath: ${indexListPath}`);
     // console.log(firstYear, lastYear, indexListPath, metadataPath, permutationsPath, logsPath, downloadsPath);
 
+    // create include list
+    const includeList = [
+        'DER106A',
+        'DER121A',
+        // 'DER146A',
+        'DER152A',
+    ];
+    
     // create skip list
     const skipList = [
-        'DER106A',
+        // 'DER106A',
         // 'DER107A',
-        'DER121A',
-        'DER146A',
-        'DER152A',
+        // 'DER121A',
+        // 'DER146A',
+        // 'DER152A',
         // 'DER2001',
+        // 'DER129A',
     ];
 
     // check if input file is present

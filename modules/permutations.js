@@ -48,17 +48,57 @@ function readCSV(filePath, colDelimiter = ',', strDelimiter = '') {
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// replace RO characters
+function replaceRoChars(inString) {
+    return inString
+        .replace(/-/g, ' - ')
+        .replace(/\s+/g, ' ')
+
+        .replace(/î/g, 'i')
+        .replace(/ă/g, 'a')
+        .replace(/ș/g, 's')
+        .replace(/ț/g, 't')
+
+        .replace(/î/g, 'i')
+        .replace(/Î/g, 'I')
+        .replace(/â/g, 'a')
+        .replace(/ă/g, 'a')
+        .replace(/ş/g, 's')
+        .replace(/ţ/g, 't')
+
+        .replace(/î/g, 'i')
+        .replace(/ă/g, 'a')
+        .replace(/ş/g, 's')
+        .replace(/ţ/g, 't')
+        
+        .replace(/Î/g, 'I')
+        .replace(/â/g, 'a')
+        .replace(/ș/g, 's')
+        .replace(/ț/g, 't');
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get current index params
-function getCurrentIndexParams(indexList, i, outPath) {
+function getCurrentIndexParams(indexList, i, permutationsPath) {
     const currentIndexName = indexList[i][4];
     const currentIndexList = indexList.filter(item => item[0] === indexList[i][0]);
+
+    // clean index name of unusable characters
+    const cleanIndexName = replaceRoChars(currentIndexName).trim()
+        .replace(/\/ de/g, ' - de')
+        .replace(/\//g, ' per ')
+        .replace(/-/g, ' - ')
+        .replace(/\s+/g, ' ');
+
+    console.log(`cleanIndexName = \'${cleanIndexName}\'`);
 
     // return current index parameters
     return {
         url: indexList[i][2],
         id: indexList[i][3],
         name: currentIndexName,
-        permutationsPath: `${outPath}/${currentIndexName.trim().replace(/\//g, '-')}.json`,
+        cleanName: cleanIndexName,
+        permutationsPath: `${permutationsPath}/${cleanIndexName}.json`,
         list: indexList.filter(item => item[0] === indexList[i][0]),
         index: currentIndexList.map(item => item[4]).indexOf(currentIndexName),
         yearStart: Number(indexList[i][5]),
@@ -68,6 +108,7 @@ function getCurrentIndexParams(indexList, i, outPath) {
         uatStep: Number(indexList[i][14]),
     };
 }
+
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // multiple choice select item
@@ -92,7 +133,7 @@ async function getItemList(element, marker) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // calculate permutations array for given index
-async function calculatePermutations(indexList, outPath, primary = true) {
+async function calculatePermutations(indexList, outPath, includeList, skipList, primary = true) {
     console.log(`\n************************************************************************`);
     console.log(`@calculatePermutations:: ${primary ? 'primary' : 'performance'} indexes START...\n`);
 
@@ -101,6 +142,9 @@ async function calculatePermutations(indexList, outPath, primary = true) {
         // prepare current index parameters
         const currentIndex = getCurrentIndexParams(indexList, i, outPath);
         console.log(`i[${i + 1}/${indexList.length}] ${currentIndex.id}`);
+        console.log(currentIndex);
+
+        if (!includeList.includes(currentIndex.id)) continue;
 
         // init current index permutation array
         const permArr = [];
@@ -220,6 +264,7 @@ async function calculatePermutations(indexList, outPath, primary = true) {
         }
     
         // save permutations to file
+        console.log('save to file: ', currentIndex.permutationsPath);
         fs.writeFileSync(currentIndex.permutationsPath, JSON.stringify(permArr));
         console.log('\n\t> PERMUTATIONS file write DONE!');
     }
@@ -235,6 +280,26 @@ async function calculatePermutations(indexList, outPath, primary = true) {
 module.exports = async (inPath, outPath) => {
     console.log(`\n************************************************************************`);
     console.log('@createPermutations: START...');
+
+    // create include list
+    const includeList = [
+        'DER106A',
+        'DER121A',
+        // 'DER146A',
+        'DER152A',
+    ];
+    
+    // create skip list
+    const skipList = [
+        // 'DER106A',
+        // 'DER107A',
+        // 'DER121A',
+        // 'DER146A',
+        // 'DER152A',
+        // 'DER2001',
+        // 'DER129A',
+    ];
+
 
     // create input paths
     const primaryListPath = `${inPath}/primaryIndexList.csv`;
@@ -252,7 +317,7 @@ module.exports = async (inPath, outPath) => {
         // process performance indexes
         const performanceList = readCSV(performanceListPath, '#').slice(1);
         console.log(`\n\t> primary indexes files read! found ${performanceList.length} indexes\n`);
-        await calculatePermutations(performanceList, `${outPath}/performance`, false)
+        await calculatePermutations(performanceList, `${outPath}/performance`, includeList, skipList, false);
 
         // else print error and give download instructions
     } else {

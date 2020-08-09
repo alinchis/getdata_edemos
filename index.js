@@ -63,7 +63,7 @@ async function main() {
     // help text
     const helpText = `\n Available commands:\n\n\
   1. -h         : display help text\n\
-  2. -d         : download index list\n\
+  2. -di        : download index list\n\
   3. -p         : create permutations files\n\
   4. -d1 [date] : download primary data. if date parameter is omitted, current date is applied\n\
   5. -d2 [date] : download performance data. if date parameter is omitted, current date is applied\n\
@@ -98,7 +98,7 @@ async function main() {
 
 
         // 2. else if argument is 'd'
-    } else if (mainArg === '-d') {
+    } else if (mainArg === '-di') {
 
         // prepare folders // folders are not written over
         createFolder(1, metadataPath);
