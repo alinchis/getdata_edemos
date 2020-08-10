@@ -19,7 +19,7 @@ const {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // CONSTANTS
-const pageDefaultTimeout = 180000;
+const pageDefaultTimeout = 30000; // deafault value = 30000 (ms)
 
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +179,6 @@ function getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloa
         downloadsPath: currentDownloadsPath,
         permutationsPath: `${permutationsPath}/performance/${cleanIndexName}.json`,
         downloadingMarkerPath: `${logsPath}/performance/_downloading_j_${cleanIndexName}`,
-        doneMarkerPath: `${logsPath}/performance/_done_${cleanIndexName}`,
         logPath: `${logsPath}/performance/${cleanIndexName}.csv`,
         list: indexList.filter(item => item[0] === indexList[i][0]),
         index: currentIndexList.map(item => item[4]).indexOf(currentIndexName),
@@ -271,6 +270,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
         // get index variables
         const currentIndex = getCurrentIndexParams(indexList, i, permutationsPath, logsPath, downloadsPath);
 
+        // if (!includeList.includes(currentIndex.id)) continue;
         if (skipList.includes(currentIndex.id)) continue;
 
 
@@ -300,9 +300,9 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
 
                 // if 'download' marker for current index file already exists, skip to the next index
                 const countyDownloadMarker = currentIndex.downloadingMarkerPath.replace('_j_', `_${j}_`)
-                console.log(`\t> \'downloading\' marker file path: '${countyDownloadMarker}'\n`);
+                // console.log(`\t> \'downloading\' marker file path: '${countyDownloadMarker}'\n`);
                 if (loopArray[j].length === 0 || fs.existsSync(countyDownloadMarker)) {
-                    console.log('\t>> \'downloading\' marker file present, skipping current county for index ...');
+                    // console.log('\t>> \'downloading\' marker file present, skipping current county for index ...');
                     continue;
                 } else {
                     // create marker file to signal dowloading
@@ -319,7 +319,7 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                 try {
                     // launch browser
                     browser = await chrome.launch({
-                        headless: false,
+                        headless: true,
                     });
                     const page = await browser.newPage();
                     page.setDefaultTimeout(pageDefaultTimeout);
@@ -636,13 +636,9 @@ async function getPerformanceTableData(firstYear, lastYear, indexList, metadataP
                 if (fs.existsSync(countyDownloadMarker)) fs.unlinkSync(countyDownloadMarker);
             }
 
-            // mark file as done
-            console.log('\tindex table download DONE!\n');
-            fs.writeFileSync(currentIndex.doneMarkerPath, 'done\n');
-
         } else {
             console.log(`clean index name = \'${currentIndex.cleanName}\'`);
-            console.log(`\nERROR: permutation file > \'${currentIndex.permutationsPath}\' NOT FOUND!\n`);
+            console.log('\x1b[31m%s\x1b[0m', `\nERROR: permutation file > \'${currentIndex.permutationsPath}\' NOT FOUND!\n`);
         }
 
     }

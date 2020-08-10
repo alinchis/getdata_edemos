@@ -1,0 +1,82 @@
+# Metodologie
+
+#### Descrierea problemei
+
+Se doreste obtinerea datelor pentru indicatorii de pe pagina [INSSE eDemos](http://edemos.insse.ro/portal/faces/oracle/webcenter/portalapp/pages/report-access.jspx?_adf.ctrl-state=n78nmkekd_9&_afrLoop=6904438086895404&_afrWindowMode=0&_afrWindowId=null#%40%3F_afrWindowId%3Dnull%26_afrLoop%3D6904438086895404%26_afrWindowMode%3D0%26_adf.ctrl-state%3D9mg94w87m_4) si exportul lor intr-un format usor de utilizat (CSV, XLSX).
+
+
+#### Analiza paginii de internet
+
+Pagina de internet pare de generatia veche, ante HTML5, probabil generata automat din ceva interfata usor de utilizat pusa la dispozitie de vanzatorul bazei de date ORACLE, in care se inmagazineaza datele indicatorilor.
+
+Nu am identificat o metoda de comunicare directa cu server-ul care livreaza datele la pagina de internet. Daca gaseam, usura munca de programare si crestea viteza de scoatere a datelor. De asemenea aveam un control pe datele primite: pentru fiecare solicitare server-ul livra un raspuns, cu sau fara date, dar tranzactia era incheiata.
+
+Singura solutie gasita pentru scoaterea datelor este sa simulam navigarea paginii intr-o maniera automata si sa extragem datele din pagina generata dupa completarea parametrilor de intrare (an, indicator, macroregiune, regiune, judet, localitate ...). Dezavantajul este ca nu avem control pe datele primite: pagina face comanda la server pentru date, dar nu stim cand se intorc. Se asteapta sa se afiseze anumite elemente pe pagina, dar acestea nu se afiseaza daca nu se primesc date. In cazul lipsei de date, se asteapta sa treaca un timp prestabilit, dupa care se trece mai departe, la urmatoarea solicitare. Aceasta lipsa de date poate genera intarzieri care nu se pot anticipa, tabelele cu lipsa de date se descarca mai greu decat cele cu date, pentru ca se asteapta de fiecare data pana la expirarea limitei (limita implicita este de 30s, dar in unele situatii a fost extinsa la 45s sau chiar 180s).
+
+
+#### Lista indicatori
+
+Lista de indicatori este disponibila pe pagina [INSSE eDemos](http://edemos.insse.ro/portal/faces/oracle/webcenter/portalapp/pages/availableIndicators.jspx?_afrLoop=6934300712214010&_afrWindowMode=0&_afrWindowId=1bdiu5x9hg_1#%40%3F_afrWindowId%3D1bdiu5x9hg_1%26_afrLoop%3D6934300712214010%26_afrWindowMode%3D0%26_adf.ctrl-state%3D1bdiu5x9hg_9). Indicatorii prezenti (total 175) sunt grupati in doua categorii: indicatori primari (114) si indicatori de performanta (61). Din punct de vedere al automatizarii, acestia difera intre ei la numarul de parametrii de selectie, respectiv numarul de coloane ale tabelului rezultat.
+
+
+#### Pregatire liste indicatori pentru procesari
+
+Pentru inceput, am creat doua liste: lista indicatori primari si lista indicatori performanta. Pentru fiecare indicator din fiecare lista am parcurs pagina eDemos si am salvat: adresa URL, an min, an max si numarul de posibilitati pentru fiecare paramentru de selectie. Cele doua liste nou create sunt salvate in directorul 'metadata'.
+
+
+#### Calculare permutari solicitari pentru fiecare indicator
+
+Pe baza datelor culese in listele de indicatori, am calculat permutarile necesare solicitarilor tuturor datelor posibil teoretic (pentru unele solicitari nu sunt disponibile date, dar nu avem de unde sa stim dinainte). Server-ul are prestabilita o limita de livrare maxima de 3500 celule. Pentru a gasi pasul la permutari am impartit 3500 la numarul de coloane al tabelului livrat si pe urma la numarul de posibilitati pentru fiecare parametru, pana se ajunge la final sau rezultatul impartirii este mai mic decat 1. Parametrii i-am luat in ordinea din lista de selectie.
+
+Cand am studiat de ce unii indicatori nu se descarca /toate solicitarile sunt fara date, am observat ca parametrul 'ani' nu se calculeaza corect in numarul de celule. Nu stiu unde este problema dar am scos parametrul 'ani' din permutari, am setat sa se solicite doar un an /solicitare date (permutare).
+
+Problema cu 'ani' am descoperit-o doar la finalul descarcarilor, cand verificam ultimii 3 indicatori de performanta. Din moment ce 'ani' este primul din lista de parametrii de selectie, este posibil sa mai fi creat probleme sporadic si in alti idicatori descarcati deja. Problema ar trebui nu mai apara la o noua descarcare in cazul restului de indicatori.
+
+Initial am calculat permutarile in ordirea parametrilor de selectie, dar pe urma am refacut permutarile pentru a le grupa pe judet. Astfel puteam porni o instanta a programului pentru fiecare judet, fara a se suprapune cu celelalte descarcari.
+
+Permutarile le-am salvat in directorul 'permutations', un fisier de permutari la fiecare indicator.
+
+
+#### Descarcarea datelor
+
+Pentru fiecare indicator, pentru fiecare judet /grupa permutari, pentru fiecare permutare se selecteaza parametrii de intrare, dupa care se comanda tabelul. Este un proces anevoios, parametrii se incarca dinamic (ex: UAT depinde de selectia Judetului, care depinde de selectia Regiunii...).
+
+Din moment ce pagina comunica cu server-ul, nu stim cand se returneaza datele. Comanda utilizata, asteapta randarea unui element HTML in pagina, dar acest element nu se randeaza daca nu sunt returnate date. Comanda are un timp maxim de asteptare (30s standard) care poate fi modificata din program. Nu am putut face diferenta intre lipsa date si timp expirat. Pentru unele tabele care returnau date foarte incet, am marit limita la 180s. Un efect secundar nedorit este cresterea timpului de descarcare pentru unele tabele, mai ales daca au date lipsa multe.
+
+Pentru a tine socoteala descarcarilor am mentinut fisiere jurnal cu descarcarile pe fiecare indicator, salvate in directorul 'logs'. Descarcarile se blocau din cand in cand. Unele blocaje au putut fi corectate, dar nu toate. Pe baza jurnalululi am putut reporni descarcarile fara pierdere de date.
+
+
+#### Cresterea vitezei de descarcare
+
+Pentru inceput am verificat descarcarea indicatorilor in ordine, nestiind cum afecteaza server-ul eDemos. Procesul este foarte anevoios, la momentul respectiv estimam un timp de 6-10h /indicator. La 175 de indicatori se aduna un timp foarte mult. Mai ales ca indicatorii pe care am facut estimarea erau destul de mici fata de altii intalniti mai tarziu.
+
+In pasul doi am modificat codul pentru a putea descarca mai multi indicatori simultan, unul pe instanta lansata. A functionat relativ bine pana cand am ajuns la indicatori cu foarte multe permutari (8-12k, fata de 2-400, cat consideram normal din primele descarcari).
+
+Din cauza asta am facut o noua revizie de cod pentru a putea descarca la nivel de judet, pentru fiecare instanta lansata. Pentru a functiona, am modificat modalitatea de creare, salvare si procesare de permutari, practic a trebuit intervenit pe tot codul. Initial, datele descarcate se salvau intr-un singur fisier pentru fiecare indicator. Dupa implementarea noului sistem de permutari, datele se salveaza la nivel de permutare ('indicator_judet'-'indicator_permutare'.csv). Astfel se elimina posibilitatea de descarcare multipla pentru aceleasi permutari si face mai usor de urmarit evolutia descarcarii.
+
+
+#### Livrarea datelor
+
+Datele de lucru sunt salvate in format CSV cu caracter delimitator '#' pentru a evita posibile interferente cu valorile din celule (',', '.', ';'). Acesta nu este un impediment la lucrul cu bazele de date, dar este deranjant pentru cei ce lucreaza cu programe tabelare, in special Microsoft Excel, care nu te lasa sa selectezi caracterul delimitator.
+
+Datele salvate la nivel de permutare sunt agregate in tabele CSV cu caracter delimitator '#', in directorul 'tables'.
+
+Din directurul 'tables', datele sunt prelucrate si salvate sub forma de fisiere CSV standard, cu delimitator ',', in directorul 'stables' (standard tables).
+
+De asemenea, tabelele se salveaza si sub forma de fisiere XLSX, in directorul 'exports'.
+
+
+#### Erori in date
+
+Nu ar trebui sa se gaseasca erori in datele predate, codul a fost adaptat treptat sa nu permita aparitia erorilor.
+
+Dupa cum am mentionat la sectiunea care priveste calculul permutarilor, este posibil sa fie date lipsa, pentru descarcarea curenta (2020-07-27), daca parametrul 'ani' a generat eroare la solicitarea de date.
+
+O alta necunoscuta la cantitatea de date: dupa trimiterea solicitarii de date de pe pagina eDemos, se asteapta aparitia tabelului cu date. Tabelul nu se creaza daca nu sunt livrate date, dar acelasi rezultat este si daca serverul intarzie cu livrearea datelor peste timpul maxim alocat. Ca urmare, e posibil sa fie date in baza eDemos, pentru anumite solicitari, care noua ne apar ca inexistente, pentru ca livrarea a fost prea inceata.
+
+
+#### Tehnologii utilizate
+
+Am scris programul in JavaScript. Pentru sarcini specializate, am folosit librarii dedicate:
+- Playwright.js: pentru interpretarea, manipularea paginilor HTML
+- Xlsx.js: pentru salvarea datelor in format XLSX
