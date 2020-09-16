@@ -52,6 +52,7 @@ function readCSV(filePath, colDelimiter = ',', strDelimiter = '') {
 // /////////////////////////////////////////////////////////////////////
 // get home html
 async function getHomePage(outPath) {
+    console.log('@getIndexList > @getHomePage ...');
 
     const urlArray = [];
 
