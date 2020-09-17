@@ -64,12 +64,13 @@ async function main() {
     const helpText = `\n Available commands:\n\n\
   1. -h         : display help text\n\
   2. -di        : download index list\n\
-  3. -p         : create permutations files\n\
-  4. -d1 [date] : download primary data. if date parameter is omitted, current date is applied\n\
-  5. -d2 [date] : download performance data. if date parameter is omitted, current date is applied\n\
-  6. -a  [date] : assemble dowloaded data into CSV files, date is necessary. ex: '2020-03-01'\\n\`;
-  7. -s  [date] : save data to standard CSV (',' delimiter), date is necessary. ex: '2020-03-01'\\n\`;
-  8. -e  [date] : export tables to xlsx, date is necessary. ex: '2020-03-01'\n`;
+  3. -si        : split index list into primary and performance lists\n\
+  4. -p         : create permutations files\n\
+  5. -d1 [date] : download primary data. if date parameter is omitted, current date is applied\n\
+  6. -d2 [date] : download performance data. if date parameter is omitted, current date is applied\n\
+  7. -a  [date] : assemble dowloaded data into CSV files, date is necessary. ex: '2020-03-01'\\n\`;
+  8. -s  [date] : save data to standard CSV (',' delimiter), date is necessary. ex: '2020-03-01'\\n\`;
+  9. -e  [date] : export tables to xlsx, date is necessary. ex: '2020-03-01'\n`;
 
     // get command line arguments
     const arguments = process.argv;
@@ -97,7 +98,7 @@ async function main() {
         console.log(helpText);
 
 
-        // 2. else if argument is 'd'
+        // 2. else if argument is 'di'
     } else if (mainArg === '-di') {
 
         // prepare folders // folders are not written over
@@ -125,7 +126,9 @@ async function main() {
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 1: get indexes list\n');
         await getIndexList(indexesFilePath.replace('today', today));
-
+    
+         // 2. else if argument is 'si'
+    } else if (mainArg === '-si') {
         // prepare indexes lists
         await splitIndexesList(
             manualIndexesListFilePath,
@@ -158,31 +161,15 @@ async function main() {
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 2: Download primary data\n');
 
-        if (secondaryArg !== '' && fs.existsSync(`${dataPath}/${secondaryArg}/${localPaths.exports}`)) {
+        if (fs.existsSync(`${dataPath}/${secondaryArg}`)) {
             getPrimaryData(
-                secondaryArg,
                 eDemosFirstYear,
                 eDemosLastYear,
-                manualIndexesListFilePath,
-                manualIndexesListUrl,
-                indexesFilePath.replace('today', secondaryArg),
-                `${dataPath}/${secondaryArg}/${localPaths.metadata}`,
-                `${dataPath}/${secondaryArg}/${localPaths.logs}`,
                 primaryIndexListPath.replace('today', secondaryArg),
+                `${dataPath}/${secondaryArg}/${localPaths.metadata}`,
+                `${dataPath}/${secondaryArg}/${localPaths.permutations}`,
+                `${dataPath}/${secondaryArg}/${localPaths.logs}`,
                 `${dataPath}/${secondaryArg}/${localPaths.downloads}`
-            );
-        } else {
-            getPrimaryData(
-                today,
-                eDemosFirstYear,
-                eDemosLastYear,
-                manualIndexesListFilePath,
-                manualIndexesListUrl,
-                indexesFilePath.replace('today', today),
-                metadataPath,
-                logsPath,
-                primaryIndexListPath.replace('today', today),
-                downloadsPath
             );
         }
 

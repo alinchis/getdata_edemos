@@ -137,30 +137,37 @@ async function calculatePermutations(indexList, outPath, includeList, skipList, 
     console.log(`\n************************************************************************`);
     console.log(`@calculatePermutations:: ${primary ? 'primary' : 'performance'} indexes START...\n`);
 
+    // some primary indexes don't have 'DEZAGREGARE2'
+    // in this case, the branch must shift to performance branch for permutations
+    let primarySwitch = false;
+
     for (let i = 0; i < indexList.length; i += 1) {
+        console.log(`\n+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`);
+        console.log(`[ ${i + 1} / ${indexList.length} ] >> ${primary ? 'primary' : 'performance'}\n`);
 
         // prepare current index parameters
         const currentIndex = getCurrentIndexParams(indexList, i, outPath);
-        console.log(`i[${i + 1}/${indexList.length}] ${currentIndex.id}`);
-        console.log(currentIndex);
+        // console.log(`i[${i + 1}/${indexList.length}] ${currentIndex.id}`);
+        // console.log(currentIndex);
+        console.log(`${primary ? 'Prim' : 'Perf'} [ ${i + 1} / ${indexList.length} ] >> ${currentIndex.id}\n`);
 
-        if (!includeList.includes(currentIndex.id)) continue;
+        if (includeList.length > 0 && !includeList.includes(currentIndex.id)) continue;
 
         // init current index permutation array
         const permArr = [];
 
         // if permutation file is present, skip to next index
         if (fs.existsSync(currentIndex.permutationsPath)) {
-            console.log('\n\t> permutations file found! skipping...\n');
+            console.log('\n\t\t>> permutations file found! skipping...\n');
             continue;
 
         // else, calculate permutations for current index
         } else {
             try {
-                console.log('\n\t> permutations file NOT found! processing...\n');
+                console.log('\n\t>> permutations file NOT found! processing...\n');
                 // launch browser
                 const browser = await chrome.launch({
-                    headless: true,
+                    headless: false,
                 });
                 const page = await browser.newPage();
                 // load page in browser
@@ -195,7 +202,7 @@ async function calculatePermutations(indexList, outPath, includeList, skipList, 
     
                     // get uat list
                     const uatList = await getItemList(page, '_paramsP_MOC');
-                    console.log(`\t> UATs: ${uatList.length} items`);
+                    console.log(`\t\t> UATs: ${uatList.length} items`);
                     // click to register uat selection
                     await page.click('label[for=_paramsP_MACROREG]');
     
@@ -203,26 +210,45 @@ async function calculatePermutations(indexList, outPath, includeList, skipList, 
                     const dez1List = await getItemList(page, '_paramsP_DEZAGREGARE1');
     
                     // for primary indexes check item 'Dezagregare 2'
-                    if (primary) {
-                        // get dezagregare_2 list of items from input: '4. Dezagregare 2'
-                        const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
-    
-                        // for each year of available data, for current index
-                        for (let y = currentIndex.yearStart; y <= currentIndex.yearEnd; y += currentIndex.yearsStep) {
-                            // for each item in dezagregare 1 list
-                            for (let k1 = 0; k1 < dez1List.length; k1 += 1) {
-                                // for each item in dezagregare_2 list
-                                for (let k2 = 0; k2 < dez2List.length; k2 += 1) {
-                                    // for each item in uat list
-                                    for (let k4 = 0; k4 < uatList.length; k4 += currentIndex.uatStep) {
-                                        countyArr.push([j, countyPerm, y, k1, k2, k4]);
-                                        console.log('\t', [j, countyPerm, y, k1, k2, k4]);
-                                        // increase county permutation counter
-                                        countyPerm += 1;
+                    if (primary && !primarySwitch) {
+                        try {
+                            // get dezagregare_2 list of items from input: '4. Dezagregare 2'
+                            const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
+        
+                            // for each year of available data, for current index
+                            for (let y = currentIndex.yearStart; y <= currentIndex.yearEnd; y += currentIndex.yearsStep) {
+                                // for each item in dezagregare 1 list
+                                for (let k1 = 0; k1 < dez1List.length; k1 += 1) {
+                                    // for each item in dezagregare_2 list
+                                    for (let k2 = 0; k2 < dez2List.length; k2 += 1) {
+                                        // for each item in uat list
+                                        for (let k4 = 0; k4 < uatList.length; k4 += currentIndex.uatStep) {
+                                            countyArr.push([j, countyPerm, y, k1, k2, k4]);
+                                            console.log('\t\t', [j, countyPerm, y, k1, k2, k4]);
+                                            // increase county permutation counter
+                                            countyPerm += 1;
+                                        }
                                     }
                                 }
                             }
+                        } catch (err) {
+                            // switch primary index to performance branch
+                            // primarySwitch = true;
+                            // // for each year of available data, for current index
+                            // for (let y = currentIndex.yearStart; y <= currentIndex.yearEnd; y += currentIndex.yearsStep) {
+                            //     // for each item in dezagregare 1 list
+                            //     for (let k1 = 0; k1 < dez1List.length; k1 += 1) {
+                            //         // for each item in uat list
+                            //         for (let k4 = 0; k4 < uatList.length; k4 += currentIndex.uatStep) {
+                            //             countyArr.push([j, countyPerm, y, k1, 0, k4]);
+                            //             console.log('\t', [j, countyPerm, y, k1, 0, k4]);
+                            //             // increase county permutation counter
+                            //             countyPerm += 1;
+                            //         }
+                            //     }
+                            // }
                         }
+                        
     
                         // else, for performance indexes, omit item 'Dezagregare 2'
                     } else {
@@ -233,7 +259,7 @@ async function calculatePermutations(indexList, outPath, includeList, skipList, 
                                 // for each item in uat list
                                 for (let k4 = 0; k4 < uatList.length; k4 += currentIndex.uatStep) {
                                     countyArr.push([j, countyPerm, y, k1, 0, k4]);
-                                    console.log('\t', [j, countyPerm, y, k1, 0, k4]);
+                                    console.log('\t\t', [j, countyPerm, y, k1, 0, k4]);
                                     // increase county permutation counter
                                     countyPerm += 1;
                                 }
@@ -242,7 +268,7 @@ async function calculatePermutations(indexList, outPath, includeList, skipList, 
                     }
     
                     // show number of needed permutations
-                    console.log(`\t> county ${j}: ${countyPerm} permutations\n`);
+                    console.log(`\t\t>>> county ${j}: ${countyPerm} permutations\n`);
     
                     // reset county selector, set back to all
                     await page.click('div#xdo\\:_paramsP_JUD_div');
@@ -283,10 +309,19 @@ module.exports = async (inPath, outPath) => {
 
     // create include list
     const includeList = [
-        'DER106A',
-        'DER121A',
+        // 'DER106A',
+        // 'DER121A',
         // 'DER146A',
-        'DER152A',
+        // 'DER152A',
+        'WEB5',
+        'WEB13',
+        'WEB14',
+        'WEB15',
+        'WEB16',
+        'WEB19',
+        'WEB20',
+        'JUS105C',
+        'JUS109A',
     ];
     
     // create skip list
@@ -312,7 +347,7 @@ module.exports = async (inPath, outPath) => {
         // process primary indexes
         const primaryList = readCSV(primaryListPath, '#').slice(1);
         console.log(`\n\t> primary indexes files read! found ${primaryList.length} indexes\n`);
-        // await calculatePermutations(primaryList, `${outPath}/primary`, true)
+        await calculatePermutations(primaryList, `${outPath}/primary`, includeList, skipList, true);
 
         // process performance indexes
         const performanceList = readCSV(performanceListPath, '#').slice(1);

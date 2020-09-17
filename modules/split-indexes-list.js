@@ -67,11 +67,27 @@ async function mcSelectItem(element, marker, choice) {
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // get list of indexes
-async function getIndexList(manualIndexesList, urlTable, savePath) {
+async function getIndexList(manualIndexesList, urlTable, savePath, primary = true) {
     console.log(`\n@getIndexList: START`);
 
     // start write file
-    const listHeader = ['domeniu', 'tip_indicator', 'url', 'indicator_cod', 'indicator_nume', 'an_prim', 'an_ultim', 'dezagregare1', 'dezagregare2', 'criteriu1', 'criteriu2', 'years_count', 'max_years', 'years_step', 'uat_step'];
+    const listHeader = [
+        'domeniu',
+        'tip_indicator',
+        'url',
+        'indicator_cod',
+        'indicator_nume',
+        'an_prim',
+        'an_ultim',
+        'dezagregare1',
+        'dezagregare2',
+        'criteriu1',
+        'criteriu2',
+        'years_count',
+        'max_years',
+        'years_step',
+        'uat_step'
+    ];
     fs.writeFileSync(savePath, `${listHeader.join('#')}\n`);
 
     try {
@@ -113,7 +129,9 @@ async function getIndexList(manualIndexesList, urlTable, savePath) {
 
                 // get list of 'Dezagregare 2' items
                 let dez2ListCount = 1;
-                if (await page.$('div #xdo\\:_paramsP_DEZAGREGARE2_div') !== null) {
+                // if (await page.$('div #xdo\\:_paramsP_DEZAGREGARE2_div') !== null) {
+                if (primary) {
+                    await page.$('div #xdo\\:_paramsP_DEZAGREGARE2_div');
                     const dez2List = await getItemList(page, '_paramsP_DEZAGREGARE2');
                     console.log(`\t> Dezagregare 2: ${dez2List.length} elemente`);
                     dez2ListCount = dez2List.length;
@@ -126,10 +144,12 @@ async function getIndexList(manualIndexesList, urlTable, savePath) {
 
                 // get list of 'Criteriu 2' items
                 let crit2ListCount = 1;
-                if (await page.$('div #xdo\\:_paramsP_CRITERIU2_div') !== null) {
+                // if (await page.$('div #xdo\\:_paramsP_CRITERIU2_div') !== null) {
+                if (primary) {
+                    await page.$('div #xdo\\:_paramsP_CRITERIU2_div');
                     const crit2List = await getItemList(page, '_paramsP_CRITERIU2');
                     console.log(`\t> Criteriu 2: ${crit2List.length - 2} elemente`);
-                    const crit2ListCount = crit2List.length - 2;
+                    crit2ListCount = crit2List.length - 2;
                 };
 
                 // get year data from manual indexes list
@@ -221,14 +241,14 @@ module.exports = async (manualIndexesListFilePath, indexesFilePath, metadataPath
             console.log('\tPROCESS > primary indexes...');
             const primaryIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori primari');
             // get list of indexes
-            const primaryIndexList = !fs.existsSync(primaryIndexListPath) ? await getIndexList(manualIndexesList, primaryIndexesArr, primaryIndexListPath) : readCSV(primaryIndexListPath, '#').slice(1);
+            const primaryIndexList = !fs.existsSync(primaryIndexListPath) ? await getIndexList(manualIndexesList, primaryIndexesArr, primaryIndexListPath, true) : readCSV(primaryIndexListPath, '#').slice(1);
             console.log(`\n\t>> Found ${primaryIndexList.length} TOTAL primary indexes\n`);
 
             // creat list of domains for performance indexes, 13 selection boxes
             console.log('\tPROCESS > performance indexes...');
             const performanceIndexesArr = indexesArr.filter(item => item[1] === 'Indicatori de performanță');
             // get list of indexes
-            const performanceIndexList = !fs.existsSync(performanceIndexesListPath) ? await getIndexList(manualIndexesList, performanceIndexesArr, performanceIndexesListPath) : readCSV(performanceIndexesListPath, '#').slice(1);
+            const performanceIndexList = !fs.existsSync(performanceIndexesListPath) ? await getIndexList(manualIndexesList, performanceIndexesArr, performanceIndexesListPath, false) : readCSV(performanceIndexesListPath, '#').slice(1);
             console.log(`\n\t>> Found ${performanceIndexList.length} TOTAL performance indexes\n`);
 
 

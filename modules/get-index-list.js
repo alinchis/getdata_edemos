@@ -17,44 +17,9 @@ const fs = require('fs-extra');
 // // METHODS
 
 // /////////////////////////////////////////////////////////////////////
-// load csv file
-function readCSV(filePath, colDelimiter = ',', strDelimiter = '') {
-    // if file is found in path
-    if (fs.existsSync(filePath)) {
-        // return parsed file
-        const newArray = fs.readFileSync(filePath, 'utf8').split('\n');
-        return newArray.filter(line => line).map(line => {
-            if (strDelimiter !== '') {
-                // if final column is missing, add empty value
-                const newLine = line[line.length - 1] === colDelimiter ? `${line}""` : line;
-                return newLine
-                    .split(`${strDelimiter}${colDelimiter}${strDelimiter}`)
-                    .map((item) => {
-                        let newItem = item.replace(/\s+/g, ' ');
-                        if (item[0] === strDelimiter) {
-                            newItem = newItem.slice(1);
-                        } else if (item[item.length - 1] === strDelimiter) {
-                            newItem = newItem.slice(0, -1);
-                        }
-                        // return new item
-                        return newItem;
-                    })
-            } else {
-                return line.split(colDelimiter);
-            }
-        });
-    }
-    // else return empty object
-    console.log('\x1b[31m%s\x1b[0m', `ERROR: ${filePath} file NOT found!`);
-    return [];
-}
-
-// /////////////////////////////////////////////////////////////////////
 // get home html
 async function getHomePage(outPath) {
     console.log('@getIndexList > @getHomePage ...');
-
-    const urlArray = [];
 
     // start browser
     const browser = await firefox.launch({
@@ -100,7 +65,7 @@ async function getHomePage(outPath) {
             await sleep(2);
 
             const lista = (await frameIndicatori.$$('.af_selectOneListbox_content', (el) => el) || []).pop();
-            const htmlLista = await lista.innerHTML()
+            const htmlLista = await lista.innerHTML();
             const $lista = cheerio.load(`<ul>${htmlLista}</ul>`);
             const texteLista = [];
 
@@ -111,7 +76,7 @@ async function getHomePage(outPath) {
 
             // select the first item in third column
             await frameIndicatori.click(`text= ${texteLista[0]}`);
-            await sleep(3);
+            await sleep(5);
 
             // extract link to new window
             const pageFrame = await getChildFrameByName(page.mainFrame(), 'pt1:portlet1::_iframe');
@@ -137,10 +102,6 @@ async function getHomePage(outPath) {
 module.exports = async (indexesListFilePath) => {
     console.log(`\n************************************************************************`);
     console.log('@getIndexList: START...');
-
-    // prepare write file, if necessary
-    // prepare array to hold previous values
-    let urlTable = [];
 
     // if write file does not exist
     if (!fs.existsSync(indexesListFilePath)) {
