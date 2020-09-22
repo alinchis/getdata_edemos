@@ -220,8 +220,8 @@ async function main() {
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 4: covert CSV to standard CSV\n');
 
-        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}/performance`;
-        const sTablesPath = `${dataPath}/${secondaryArg}/${localPaths.stables}/performance`;
+        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
+        const sTablesPath = `${dataPath}/${secondaryArg}/${localPaths.stables}`;
 
         if (fs.existsSync(tablesPath) && fs.existsSync(sTablesPath)) {
             console.log('PATHS found...');
@@ -237,8 +237,8 @@ async function main() {
         console.log('\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
         console.log('STAGE 5: Export data to XLSX files\n');
 
-        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}/performance`;
-        const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}/performance`;
+        const tablesPath = `${dataPath}/${secondaryArg}/${localPaths.tables}`;
+        const exportsPath = `${dataPath}/${secondaryArg}/${localPaths.exports}`;
 
         if (fs.existsSync(tablesPath) && fs.existsSync(exportsPath)) {
             console.log('PATHS found...');

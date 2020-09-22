@@ -658,7 +658,7 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
         // 'DER121A',
         // 'DER146A',
         // 'DER152A',
-        'WEB5',
+        // 'WEB5',
         // 'WEB13',
         // 'WEB14',
         // 'WEB15',

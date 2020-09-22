@@ -66,23 +66,50 @@ function assembleIndexData(inPath, fileName) {
 module.exports = (downloadsPath, tablesPath) => {
     console.log('\n@assembleData:: START...\n');
 
+    // prepare primary paths
+    const primaryInputPath = `${downloadsPath}/primary`;
+    const primaryOutputPath = `${tablesPath}/primary`;
+
+    // if primary folders exists
+    if (fs.existsSync(primaryInputPath) && fs.existsSync(primaryOutputPath)) {
+        console.log('\n\t> Primary folders found, starting process...\n');
+        // read input directory
+        const primaryFileArray = fs.readdirSync(primaryInputPath);
+        console.log(`TOTAL = ${primaryFileArray.length} files found.`);
+
+        primaryFileArray.forEach((fileName, index) => {
+            // assemble index data
+            console.log(`\t[ ${index + 1}/${primaryFileArray.length} ] > assemble new index: ${fileName.split(' ')[0]}`);
+            const outIndex = assembleIndexData(primaryInputPath, fileName);
+
+            // save new index to file
+            console.log(`\t[ ${index + 1}/${primaryFileArray.length} ] > write new index to file: ${fileName.split(' ')[0]}`);
+            fs.writeFileSync(`${primaryOutputPath}/${fileName}.csv`, outIndex.join('\n'));
+        });
+    }
+
     // prepare performance paths
     const performanceInputPath = `${downloadsPath}/performance`;
     const performanceOutputPath = `${tablesPath}/performance`;
 
-    // read input directory
-    const performanceFileArray = fs.readdirSync(performanceInputPath);
-    console.log(`TOTAL = ${performanceFileArray.length} files found.`);
+    // if performance folders exists
+    if (fs.existsSync(performanceInputPath) && fs.existsSync(performanceOutputPath)) {
+        console.log('\n\t> Performance folders found, starting process...\n');
+        // read input directory
+        const performanceFileArray = fs.readdirSync(performanceInputPath);
+        console.log(`TOTAL = ${performanceFileArray.length} files found.`);
 
-    performanceFileArray.forEach((fileName, index) => {
-        // assemble index data
-        console.log(`\t[ ${index + 1}/${performanceFileArray.length} ] > assemble new index: ${fileName.split(' ')[0]}`);
-        const outIndex = assembleIndexData(performanceInputPath, fileName);
+        performanceFileArray.forEach((fileName, index) => {
+            // assemble index data
+            console.log(`\t[ ${index + 1}/${performanceFileArray.length} ] > assemble new index: ${fileName.split(' ')[0]}`);
+            const outIndex = assembleIndexData(performanceInputPath, fileName);
 
-        // save new index to file
-        console.log(`\t[ ${index + 1}/${performanceFileArray.length} ] > write new index to file: ${fileName.split(' ')[0]}`);
-        fs.writeFileSync(`${performanceOutputPath}/${fileName}.csv`, outIndex.join('\n'));
-    });
+            // save new index to file
+            console.log(`\t[ ${index + 1}/${performanceFileArray.length} ] > write new index to file: ${fileName.split(' ')[0]}`);
+            fs.writeFileSync(`${performanceOutputPath}/${fileName}.csv`, outIndex.join('\n'));
+        });
+    }
+
 
     console.log('\n@assembleData:: END\n');
 };

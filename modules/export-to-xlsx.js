@@ -33,7 +33,7 @@ function readCSV(filePath, delimiter) {
 
 // /////////////////////////////////////////////////////////////////////
 // export to xlsx
-function exportToXlsx(index, tableIndex, totalItems, filePath, delimiter, saveFilePath, fileName, inPath, outpath) {
+function exportToXlsx(index, tableIndex, totalItems, filePath, delimiter, saveFilePath) {
     const printIndex = `${index}/${totalItems} [ ${tableIndex} ]`;
     console.log(`\n${printIndex} >>> @exportToXlsx: START...`);
     // if file is found in path
@@ -96,14 +96,41 @@ function exportToXlsx(index, tableIndex, totalItems, filePath, delimiter, saveFi
 // // EXPORTS
 module.exports = (inPath, outPath) => {
     console.log('\n@exportToXlsx:: START\n');
-    // read input directory
-    const fileArray = fs.readdirSync(inPath);
-    console.log(`TOTAL = ${fileArray.length} files found.`);
-    
-    fileArray.forEach((fileName, index) => {
-        const tableIndex = fileName.split(' ')[0];
-        exportToXlsx(index + 1, tableIndex, fileArray.length, `${inPath}/${fileName}`, '#', `${outPath}/${fileName.replace('.csv', '.xlsx')}`, fileName, inPath, outPath);
-    });
+
+    // prepare primary paths
+    const primaryInputPath = `${inPath}/primary`;
+    const primaryOutputPath = `${outPath}/primary`;
+
+    // if primary folders exists
+    if (fs.existsSync(primaryInputPath) && fs.existsSync(primaryOutputPath)) {
+        console.log('\n\t> Primary folders found, starting process...\n');
+        // read input directory
+        const primaryFileArray = fs.readdirSync(primaryInputPath);
+        console.log(`TOTAL = ${primaryFileArray.length} files found.`);
+
+        primaryFileArray.forEach((fileName, index) => {
+            const tableIndex = fileName.split(' ')[0];
+            exportToXlsx(index + 1, tableIndex, primaryFileArray.length, `${primaryInputPath}/${fileName}`, '#', `${primaryOutputPath}/${fileName.replace('.csv', '.xlsx')}`);
+        });
+    }
+
+     // prepare performance paths
+     const performanceInputPath = `${inPath}/performance`;
+     const performanceOutputPath = `${outPath}/performance`;
+ 
+     // if performance folders exists
+     if (fs.existsSync(performanceInputPath) && fs.existsSync(performanceOutputPath)) {
+         console.log('\n\t> Performance folders found, starting process...\n');
+         // read input directory
+         const performanceFileArray = fs.readdirSync(performanceInputPath);
+         console.log(`TOTAL = ${performanceFileArray.length} files found.`);
+ 
+         performanceFileArray.forEach((fileName, index) => {
+            const tableIndex = fileName.split(' ')[0];
+            exportToXlsx(index + 1, tableIndex, performanceFileArray.length, `${primaryInputPath}/${fileName}`, '#', `${primaryOutputPath}/${fileName.replace('.csv', '.xlsx')}`);
+        });
+     }
+
 
     console.log('\n@exportToXlsx:: END\n');
 };

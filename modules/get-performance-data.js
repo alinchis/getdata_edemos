@@ -655,10 +655,10 @@ module.exports = async (firstYear, lastYear, indexListPath, metadataPath, permut
 
     // create include list
     const includeList = [
-        'DER106A',
-        'DER121A',
+        // 'DER106A',
+        // 'DER121A',
         // 'DER146A',
-        'DER152A',
+        // 'DER152A',
     ];
     
     // create skip list

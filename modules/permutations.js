@@ -167,7 +167,7 @@ async function calculatePermutations(indexList, outPath, includeList, skipList, 
                 console.log('\n\t>> permutations file NOT found! processing...\n');
                 // launch browser
                 const browser = await chrome.launch({
-                    headless: false,
+                    headless: true,
                 });
                 const page = await browser.newPage();
                 // load page in browser
@@ -313,15 +313,15 @@ module.exports = async (inPath, outPath) => {
         // 'DER121A',
         // 'DER146A',
         // 'DER152A',
-        'WEB5',
-        'WEB13',
-        'WEB14',
-        'WEB15',
-        'WEB16',
-        'WEB19',
-        'WEB20',
-        'JUS105C',
-        'JUS109A',
+        // 'WEB5',
+        // 'WEB13',
+        // 'WEB14',
+        // 'WEB15',
+        // 'WEB16',
+        // 'WEB19',
+        // 'WEB20',
+        // 'JUS105C',
+        // 'JUS109A',
     ];
     
     // create skip list
