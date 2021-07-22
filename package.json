@@ -17,7 +17,7 @@
     "fs-extra": "^9.0.1",
     "playwright": "^1.4.0",
     "tabletojson": "^2.0.4",
-    "xlsx": "^0.16.7"
+    "xlsx": "^0.17.0"
   },
   "devDependencies": {}
 }
